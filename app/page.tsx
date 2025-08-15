@@ -1,27 +1,11 @@
 "use client"
 
-import GoogleHomepage from "./components/GoogleHomepage"
 import SearchResultsPage from "./components/SearchResultsPage"
 import { useSearch } from "./hooks/useSearch"
 import { useEffect } from "react"
 
 export default function Home() {
-  const {
-    query,
-    setQuery,
-    search,
-    ads,
-    organic,
-    loading,
-    handleSearch,
-    goHome,
-    country,
-    setCountry,
-    language,
-    setLanguage,
-    location,
-    setLocation,
-  } = useSearch()
+  const { query, setQuery, search, ads, organic, loading, handleSearch, goHome } = useSearch()
 
   useEffect(() => {
     if (search) {
@@ -31,9 +15,9 @@ export default function Home() {
     }
   }, [search])
 
-  if (!search) {
-    return <GoogleHomepage query={query} setQuery={setQuery} onSearch={handleSearch} />
-  }
+  // if (!search) {
+  //   return <GoogleHomepage query={query} setQuery={setQuery} onSearch={handleSearch} />
+  // }
 
   return (
     <SearchResultsPage
@@ -44,12 +28,7 @@ export default function Home() {
       ads={ads}
       organicResults={organic}
       loading={loading}
-      country={country}
-      setCountry={setCountry}
-      language={language}
-      setLanguage={setLanguage}
-      location={location}
-      setLocation={setLocation}
+      search={search}
     />
   )
 }

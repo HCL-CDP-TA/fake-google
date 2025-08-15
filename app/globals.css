@@ -137,4 +137,17 @@
   .google-font-medium {
     font-weight: 500;
   }
+
+  /* Ensure all buttons have pointer cursor */
+  button,
+  [role="button"],
+  .cursor-pointer {
+    cursor: pointer;
+  }
+
+  /* Disabled buttons should have default cursor */
+  button:disabled,
+  [role="button"]:disabled {
+    cursor: not-allowed;
+  }
 }

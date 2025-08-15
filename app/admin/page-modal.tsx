@@ -1,12 +1,11 @@
 "use client"
-import { useState, useEffect, FormEvent } from "react"
+import { useState, useEffect, ChangeEvent, FormEvent } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import {
   Dialog,
   DialogContent,
@@ -22,7 +21,6 @@ type AdType = {
   display_url: string
   url: string // final_url
   description: string
-  description2?: string
   priority?: number
   utm_source?: string
   utm_medium?: string
@@ -33,7 +31,6 @@ type AIGeneratedAd = {
   title1: string
   title2: string
   description: string
-  description2: string
   target_audience: string
   campaign_focus: string
 }
@@ -65,25 +62,18 @@ export default function Admin() {
   const [aiKeyword, setAiKeyword] = useState("")
   const [aiDisplayUrl, setAiDisplayUrl] = useState("")
   const [aiLandingUrl, setAiLandingUrl] = useState("")
-  const [numAdsToGenerate, setNumAdsToGenerate] = useState(3)
   const [generatedAds, setGeneratedAds] = useState<AIGeneratedAd[]>([])
   const [isGenerating, setIsGenerating] = useState(false)
   const [selectedAds, setSelectedAds] = useState<boolean[]>([])
   const [aiCampaignNames, setAiCampaignNames] = useState<string[]>([])
-  const [isLoadingAds, setIsLoadingAds] = useState(true)
 
   useEffect(() => {
-    setIsLoadingAds(true)
     fetch("/api/ads")
       .then(r => r.json())
       .then(data => {
-        // API returns array directly, not wrapped in {ads: [...]}
-        setAds(Array.isArray(data) ? data : data.ads || [])
+        setAds(data.ads || [])
       })
       .catch(console.error)
-      .finally(() => {
-        setIsLoadingAds(false)
-      })
   }, [])
 
   useEffect(() => {
@@ -109,6 +99,7 @@ export default function Admin() {
     })
 
     if (response.ok) {
+      const data = await response.json()
       if (editing >= 0) {
         const newAds = [...ads]
         newAds[editing] = { keyword, ad }
@@ -126,7 +117,6 @@ export default function Admin() {
       display_url: "",
       url: "",
       description: "",
-      description2: "",
       priority: 1,
       utm_source: "google",
       utm_medium: "paid_search",
@@ -177,7 +167,6 @@ export default function Admin() {
           keyword: aiKeyword,
           displayUrl: aiDisplayUrl,
           landingUrl: aiLandingUrl,
-          numAds: numAdsToGenerate,
         }),
       })
 
@@ -188,7 +177,7 @@ export default function Admin() {
 
         // Generate campaign names
         const campaigns = (data.ads || []).map(
-          (_: AIGeneratedAd, index: number) => `${aiKeyword.replace(/\s+/g, "-").toLowerCase()}-campaign-${index + 1}`,
+          (_: any, index: number) => `${aiKeyword.replace(/\s+/g, "-").toLowerCase()}-campaign-${index + 1}`,
         )
         setAiCampaignNames(campaigns)
       } else {
@@ -206,16 +195,14 @@ export default function Admin() {
 
     for (let i = 0; i < selectedGeneratedAds.length; i++) {
       const genAd = selectedGeneratedAds[i]
-      const originalIndex = generatedAds.findIndex(ad => ad === genAd)
-      const campaignName = aiCampaignNames[originalIndex]
+      const campaignName = aiCampaignNames[generatedAds.findIndex(ad => ad === genAd)]
 
       const newAd: AdType = {
         title: genAd.title1,
         display_url: aiDisplayUrl,
         url: aiLandingUrl,
         description: genAd.description,
-        description2: genAd.description2,
-        priority: originalIndex + 1, // Priority based on position (1, 2, 3, etc.)
+        priority: 1,
         utm_source: "google",
         utm_medium: "paid_search",
         utm_campaign: campaignName,
@@ -404,25 +391,14 @@ export default function Admin() {
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">Description Line 1 *</label>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Description *</label>
                           <Textarea
                             name="description"
                             value={ad.description}
                             onChange={e => setAd({ ...ad, description: e.target.value })}
                             placeholder="e.g., Compare rates from top lenders. Apply online in minutes."
-                            rows={2}
+                            rows={3}
                             required
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">Description Line 2</label>
-                          <Textarea
-                            name="description2"
-                            value={ad.description2 || ""}
-                            onChange={e => setAd({ ...ad, description2: e.target.value })}
-                            placeholder="e.g., Free quotes available. No hidden fees or obligations."
-                            rows={2}
                           />
                         </div>
                       </div>
@@ -473,7 +449,7 @@ export default function Admin() {
                 </Dialog>
 
                 {/* AI Generator Button */}
-                <Button className="bg-blue-600" onClick={() => setShowAIGenerator(!showAIGenerator)}>
+                <Button variant="outline" onClick={() => setShowAIGenerator(!showAIGenerator)}>
                   ✨ AI Generator
                 </Button>
               </div>
@@ -519,7 +495,7 @@ export default function Admin() {
                     <SelectItem value="50">50</SelectItem>
                   </SelectContent>
                 </Select>
-                <span className="text-sm text-gray-700 google-font">keywords</span>
+                <span className="text-sm text-gray-700 google-font">ads</span>
               </div>
             </div>
           </div>
@@ -561,67 +537,31 @@ export default function Admin() {
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Number of Ads to Generate</label>
-                  <Select
-                    value={numAdsToGenerate.toString()}
-                    onValueChange={value => setNumAdsToGenerate(Number(value))}>
-                    <SelectTrigger className="w-32">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="1">1 ad</SelectItem>
-                      <SelectItem value="2">2 ads</SelectItem>
-                      <SelectItem value="3">3 ads</SelectItem>
-                      <SelectItem value="4">4 ads</SelectItem>
-                      <SelectItem value="5">5 ads</SelectItem>
-                      <SelectItem value="6">6 ads</SelectItem>
-                      <SelectItem value="8">8 ads</SelectItem>
-                      <SelectItem value="10">10 ads</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="flex justify-end gap-3">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setAiKeyword("")
-                      setAiDisplayUrl("")
-                      setAiLandingUrl("")
-                      setGeneratedAds([])
-                      setSelectedAds([])
-                      setAiCampaignNames([])
-                    }}>
-                    Cancel
-                  </Button>
-                  <Button
-                    onClick={handleGenerateAds}
-                    disabled={isGenerating || !aiKeyword.trim() || !aiDisplayUrl.trim() || !aiLandingUrl.trim()}
-                    size="sm">
-                    {isGenerating ? (
-                      <>
-                        <svg className="animate-spin -ml-1 mr-3 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                          <circle
-                            className="opacity-25"
-                            cx="12"
-                            cy="12"
-                            r="10"
-                            stroke="currentColor"
-                            strokeWidth="4"></circle>
-                          <path
-                            className="opacity-75"
-                            fill="currentColor"
-                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        Generating...
-                      </>
-                    ) : (
-                      "Generate Variations"
-                    )}
-                  </Button>
-                </div>
+                <Button
+                  onClick={handleGenerateAds}
+                  disabled={isGenerating || !aiKeyword.trim() || !aiDisplayUrl.trim() || !aiLandingUrl.trim()}
+                  className="w-full">
+                  {isGenerating ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-3 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"></circle>
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Generating Ads...
+                    </>
+                  ) : (
+                    "Generate 3 Ad Variations"
+                  )}
+                </Button>
 
                 {/* Generated Ads Preview */}
                 {generatedAds.length > 0 && (
@@ -650,7 +590,6 @@ export default function Admin() {
                                 <div className="text-blue-600 font-medium">{ad.title1}</div>
                                 <div className="text-green-600 text-sm">{aiDisplayUrl}</div>
                                 <div className="text-gray-700 text-sm">{ad.description}</div>
-                                {ad.description2 && <div className="text-gray-700 text-sm">{ad.description2}</div>}
                                 <div className="text-xs text-gray-500">
                                   Campaign:{" "}
                                   {aiCampaignNames[index] ||
@@ -663,7 +602,13 @@ export default function Admin() {
                       </Card>
                     ))}
 
-                    <div className="flex justify-end gap-3 pt-4">
+                    <div className="flex gap-3 pt-4">
+                      <Button
+                        onClick={handleCreateSelectedAds}
+                        disabled={!selectedAds.some(Boolean)}
+                        className="flex-1">
+                        Create Selected Ads ({selectedAds.filter(Boolean).length})
+                      </Button>
                       <Button
                         onClick={() => {
                           setGeneratedAds([])
@@ -673,12 +618,8 @@ export default function Admin() {
                           setAiLandingUrl("")
                           setAiCampaignNames([])
                         }}
-                        variant="outline"
-                        size="sm">
-                        Clear All
-                      </Button>
-                      <Button onClick={handleCreateSelectedAds} disabled={!selectedAds.some(Boolean)} size="sm">
-                        Create Selected ({selectedAds.filter(Boolean).length})
+                        variant="outline">
+                        Clear
                       </Button>
                     </div>
                   </div>
@@ -690,21 +631,7 @@ export default function Admin() {
           {/* Ad List */}
           <div className="bg-white rounded-lg shadow">
             <div className="divide-y divide-gray-200">
-              {isLoadingAds ? (
-                <div className="p-8 text-center">
-                  <div className="inline-flex items-center">
-                    <svg className="animate-spin -ml-1 mr-3 h-8 w-8 text-blue-600" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      />
-                    </svg>
-                    <span className="text-lg text-gray-600 google-font">Loading ads...</span>
-                  </div>
-                </div>
-              ) : Object.keys(paginationData.groups).length === 0 ? (
+              {Object.keys(paginationData.groups).length === 0 ? (
                 <div className="p-8 text-center">
                   <svg
                     className="mx-auto h-12 w-12 text-gray-400"
@@ -725,103 +652,95 @@ export default function Admin() {
                 </div>
               ) : (
                 <>
-                  <div className="p-6 pb-8">
-                    <Accordion type="multiple" className="space-y-4">
-                      {Object.entries(paginationData.groups).map(([keywordName, keywordAds]) => (
-                        <AccordionItem key={keywordName} value={keywordName} className="border rounded-lg shadow-sm">
-                          <AccordionTrigger className="px-4 py-3 hover:no-underline">
-                            <div className="flex items-center justify-between w-full">
-                              <div className="flex items-center gap-3">
-                                <span className="text-lg font-medium text-gray-900 google-font">
-                                  &ldquo;{keywordName}&rdquo;
-                                </span>
-                                <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800 google-font">
-                                  {keywordAds.length} ad{keywordAds.length !== 1 ? "s" : ""}
-                                </span>
+                  {Object.entries(paginationData.groups).map(([keywordName, keywordAds]) => (
+                    <div key={keywordName} className="p-6">
+                      <div className="mb-4">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-lg font-medium text-gray-900 google-font">&ldquo;{keywordName}&rdquo;</h3>
+                          <p className="text-sm text-gray-500 google-font">
+                            {keywordAds.length} ad{keywordAds.length !== 1 ? "s" : ""}
+                            {keywordAds.length > 3 && (
+                              <span className="text-amber-600"> (only first 3 will show in search)</span>
+                            )}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="space-y-4">
+                        {keywordAds.map((item, i) => {
+                          const originalIndex = ads.findIndex(ad => ad === item)
+                          return (
+                            <div
+                              key={originalIndex}
+                              className="border border-gray-200 rounded-lg p-4 hover:border-gray-300 transition-colors">
+                              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex flex-wrap items-center gap-2 mb-2">
+                                    <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-yellow-100 text-yellow-800 google-font">
+                                      Sponsored
+                                    </span>
+                                    <span
+                                      className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium google-font ${
+                                        item.ad.priority === 3
+                                          ? "bg-red-100 text-red-800"
+                                          : item.ad.priority === 2
+                                          ? "bg-orange-100 text-orange-800"
+                                          : "bg-gray-100 text-gray-800"
+                                      }`}>
+                                      Priority {item.ad.priority}
+                                    </span>
+                                    {i < 3 && (
+                                      <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800 google-font">
+                                        Will Show
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  <div className="mb-1">
+                                    <span className="text-lg text-blue-700 font-medium google-font break-words">
+                                      {item.ad.title}
+                                    </span>
+                                  </div>
+                                  <div className="text-green-700 text-sm mb-1 google-font break-words">
+                                    {item.ad.display_url}
+                                  </div>
+                                  <div className="text-gray-700 text-sm google-font break-words">
+                                    {item.ad.description}
+                                  </div>
+
+                                  <div className="mt-3 text-xs text-gray-500 google-font">
+                                    <div className="break-all">
+                                      Final URL: <span className="text-blue-600">{item.ad.url}</span>
+                                    </div>
+                                    {item.ad.utm_campaign && (
+                                      <div className="break-words">Campaign: {item.ad.utm_campaign}</div>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center gap-2 sm:ml-4 flex-shrink-0">
+                                  <Button
+                                    onClick={() => handleEdit(filteredAds.findIndex(ad => ad === item))}
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-blue-600 hover:text-blue-800 p-2">
+                                    <Pencil className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    onClick={() => handleDelete(filteredAds.findIndex(ad => ad === item))}
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-red-600 hover:text-red-800 p-2">
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
                               </div>
                             </div>
-                          </AccordionTrigger>
-                          <AccordionContent className="px-4 pb-4">
-                            <div className="space-y-4">
-                              {keywordAds.map((item, i) => {
-                                const originalIndex = ads.findIndex(ad => ad === item)
-                                return (
-                                  <div
-                                    key={originalIndex}
-                                    className="border border-gray-200 rounded-lg p-4 hover:border-gray-300 transition-colors">
-                                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-                                      <div className="flex-1 min-w-0">
-                                        <div className="flex flex-wrap items-center gap-2 mb-2">
-                                          <span
-                                            className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium google-font ${
-                                              item.ad.priority === 3
-                                                ? "bg-red-100 text-red-800"
-                                                : item.ad.priority === 2
-                                                ? "bg-orange-100 text-orange-800"
-                                                : "bg-gray-100 text-gray-800"
-                                            }`}>
-                                            Priority {item.ad.priority}
-                                          </span>
-                                          {i < 3 && (
-                                            <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800 google-font">
-                                              Will Show
-                                            </span>
-                                          )}
-                                        </div>
-
-                                        <div className="mb-1">
-                                          <span className="text-lg text-blue-700 font-medium google-font break-words">
-                                            {item.ad.title}
-                                          </span>
-                                        </div>
-                                        <div className="text-green-700 text-sm mb-1 google-font break-words">
-                                          {item.ad.display_url}
-                                        </div>
-                                        <div className="text-gray-700 text-sm google-font break-words">
-                                          {item.ad.description}
-                                        </div>
-                                        {item.ad.description2 && (
-                                          <div className="text-gray-700 text-sm google-font break-words">
-                                            {item.ad.description2}
-                                          </div>
-                                        )}
-
-                                        <div className="mt-3 text-xs text-gray-500 google-font">
-                                          <div className="break-all">
-                                            Final URL: <span className="text-blue-600">{item.ad.url}</span>
-                                          </div>
-                                          {item.ad.utm_campaign && (
-                                            <div className="break-words">Campaign: {item.ad.utm_campaign}</div>
-                                          )}
-                                        </div>
-                                      </div>
-
-                                      <div className="flex items-center gap-2 sm:ml-4 flex-shrink-0">
-                                        <Button
-                                          onClick={() => handleEdit(filteredAds.findIndex(ad => ad === item))}
-                                          variant="ghost"
-                                          size="sm"
-                                          className="text-blue-600 hover:text-blue-800 p-2">
-                                          <Pencil className="h-4 w-4" />
-                                        </Button>
-                                        <Button
-                                          onClick={() => handleDelete(filteredAds.findIndex(ad => ad === item))}
-                                          variant="ghost"
-                                          size="sm"
-                                          className="text-red-600 hover:text-red-800 p-2">
-                                          <Trash2 className="h-4 w-4" />
-                                        </Button>
-                                      </div>
-                                    </div>
-                                  </div>
-                                )
-                              })}
-                            </div>
-                          </AccordionContent>
-                        </AccordionItem>
-                      ))}
-                    </Accordion>
-                  </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  ))}
 
                   {/* Pagination */}
                   {paginationData.totalPages > 1 && (

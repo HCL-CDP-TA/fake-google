@@ -1,7 +1,8 @@
 import Link from "next/link"
-import { ChangeEvent, FormEvent } from "react"
+import { ChangeEvent, FormEvent, useState } from "react"
 import PaidAds from "./PaidAds"
 import OrganicResults from "./OrganicResults"
+import UTMTracker from "./UTMTracker"
 
 type PaidAd = {
   title: string
@@ -26,13 +27,7 @@ interface SearchResultsPageProps {
   ads: PaidAd[]
   organicResults: OrganicResult[]
   loading: boolean
-  // Localization props
-  country?: string
-  setCountry?: (country: string) => void
-  language?: string
-  setLanguage?: (language: string) => void
-  location?: string
-  setLocation?: (location: string) => void
+  search?: string // Add search state to know if a search has been performed
 }
 
 export default function SearchResultsPage({
@@ -43,15 +38,27 @@ export default function SearchResultsPage({
   ads,
   organicResults,
   loading,
-  country = "us",
-  setCountry = () => {},
-  language = "en",
-  setLanguage = () => {},
-  location = "",
-  setLocation = () => {},
+  search = "",
 }: SearchResultsPageProps) {
+  const [showUTMTracker, setShowUTMTracker] = useState(false)
+
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white relative">
+      {/* Admin gear icon - positioned in very top right */}
+      <Link
+        href="/admin"
+        className="fixed top-4 right-4 z-50 text-gray-600 hover:text-gray-800 p-2 rounded-full hover:bg-gray-100 transition-colors"
+        title="Admin">
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z"
+          />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+      </Link>
+
       {/* Header with search */}
       <header className="border-b border-gray-200 bg-white sticky top-0 z-10">
         <div className="px-6 py-3">
@@ -91,60 +98,8 @@ export default function SearchResultsPage({
               </div>
             </form>
 
-            {/* Right side */}
-            <div className="flex items-center gap-4">
-              {/* Localization Controls */}
-              <div className="flex items-center gap-3 text-sm">
-                {/* Country/Region */}
-                <select
-                  value={country}
-                  onChange={e => setCountry(e.target.value)}
-                  className="text-gray-700 bg-transparent border border-gray-300 rounded px-2 py-1 text-xs google-font hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500">
-                  <option value="us">🇺🇸 United States</option>
-                  <option value="uk">🇬🇧 United Kingdom</option>
-                  <option value="ca">🇨🇦 Canada</option>
-                  <option value="au">🇦🇺 Australia</option>
-                  <option value="de">🇩🇪 Germany</option>
-                  <option value="fr">🇫🇷 France</option>
-                  <option value="es">🇪🇸 Spain</option>
-                  <option value="it">🇮🇹 Italy</option>
-                  <option value="jp">🇯🇵 Japan</option>
-                  <option value="br">🇧🇷 Brazil</option>
-                  <option value="mx">🇲🇽 Mexico</option>
-                  <option value="in">🇮🇳 India</option>
-                </select>
-
-                {/* Language */}
-                <select
-                  value={language}
-                  onChange={e => setLanguage(e.target.value)}
-                  className="text-gray-700 bg-transparent border border-gray-300 rounded px-2 py-1 text-xs google-font hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500">
-                  <option value="en">English</option>
-                  <option value="es">Español</option>
-                  <option value="fr">Français</option>
-                  <option value="de">Deutsch</option>
-                  <option value="it">Italiano</option>
-                  <option value="pt">Português</option>
-                  <option value="ja">日本語</option>
-                  <option value="zh">中文</option>
-                  <option value="ru">Русский</option>
-                  <option value="ar">العربية</option>
-                </select>
-
-                {/* Location Input */}
-                <input
-                  type="text"
-                  value={location}
-                  onChange={e => setLocation(e.target.value)}
-                  placeholder="Location (optional)"
-                  className="text-gray-700 bg-transparent border border-gray-300 rounded px-2 py-1 text-xs google-font hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500 w-32"
-                />
-              </div>
-
-              <Link href="/admin" className="text-gray-700 hover:underline text-sm google-font">
-                Admin
-              </Link>
-            </div>
+            {/* Right side - currently empty */}
+            <div className="flex items-center gap-4"></div>
           </div>
         </div>
 
@@ -207,31 +162,27 @@ export default function SearchResultsPage({
       {/* Results */}
       <main className="px-6 py-4">
         <div className="max-w-2xl" style={{ marginLeft: "174px" }}>
-          {/* Results info */}
-          <div className="text-sm text-gray-600 mb-4 google-font">
-            {loading ? (
-              "Searching..."
-            ) : (
-              <>
-                About {ads.length + organicResults.length} results (0.42 seconds)
-                {(country !== "us" || language !== "en" || location) && (
-                  <span className="ml-2 text-xs text-gray-500">
-                    • {country.toUpperCase()}
-                    {language !== "en" && `, ${language.toUpperCase()}`}
-                    {location && `, ${location}`}
-                  </span>
-                )}
-              </>
-            )}
-          </div>
+          {/* Results info - only show if a search has been performed */}
+          {search && (
+            <div className="text-sm text-gray-600 mb-4 google-font">
+              {loading ? "Searching..." : <>About {ads.length + organicResults.length} results (0.42 seconds)</>}
+            </div>
+          )}
 
           {/* Paid Ads */}
-          <PaidAds ads={ads} loading={loading && ads.length === 0} />
+          <PaidAds ads={ads} loading={loading && ads.length === 0} currentQuery={query} />
 
           {/* Organic Results */}
-          <OrganicResults results={organicResults} loading={loading && organicResults.length === 0} />
+          <OrganicResults
+            results={organicResults}
+            loading={loading && organicResults.length === 0}
+            hasSearched={!!search}
+          />
         </div>
       </main>
+
+      {/* UTM Tracker for Martech Demos */}
+      <UTMTracker visible={showUTMTracker} onToggle={() => setShowUTMTracker(!showUTMTracker)} />
     </div>
   )
 }

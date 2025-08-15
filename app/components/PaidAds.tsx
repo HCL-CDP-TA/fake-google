@@ -9,9 +9,21 @@ type PaidAd = {
 interface PaidAdsProps {
   ads: PaidAd[]
   loading?: boolean
+  currentQuery?: string
 }
 
-export default function PaidAds({ ads, loading }: PaidAdsProps) {
+export default function PaidAds({ ads, loading, currentQuery }: PaidAdsProps) {
+  const handleAdClick = (ad: PaidAd) => {
+    // Emit custom event for UTM tracking
+    const adClickEvent = new CustomEvent("adClick", {
+      detail: {
+        url: ad.url,
+        keyword: currentQuery || "",
+        adTitle: ad.title,
+      },
+    })
+    window.dispatchEvent(adClickEvent)
+  }
   if (loading) {
     return (
       <div className="mb-6 p-4 border border-gray-200 rounded-lg bg-gray-50">
@@ -29,7 +41,7 @@ export default function PaidAds({ ads, loading }: PaidAdsProps) {
       {ads.map((ad, i) => (
         <div key={i} className="mb-6 p-4 border border-gray-200 rounded-lg bg-gray-50">
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-medium text-gray-700 bg-white px-2 py-1 rounded border google-font">
+            <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-yellow-100 text-yellow-800 google-font">
               Sponsored
             </span>
           </div>
@@ -38,6 +50,7 @@ export default function PaidAds({ ads, loading }: PaidAdsProps) {
               href={ad.url}
               target="_blank"
               rel="noopener"
+              onClick={() => handleAdClick(ad)}
               className="text-xl text-blue-700 hover:underline visited:text-purple-700 google-font">
               {ad.title}
             </a>

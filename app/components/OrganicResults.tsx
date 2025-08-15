@@ -1,3 +1,4 @@
+import Image from "next/image"
 import { getFaviconUrl } from "../utils/favicon"
 
 type OrganicResult = {
@@ -10,15 +11,20 @@ type OrganicResult = {
 interface OrganicResultsProps {
   results: OrganicResult[]
   loading?: boolean
+  hasSearched?: boolean
 }
 
-export default function OrganicResults({ results, loading }: OrganicResultsProps) {
+export default function OrganicResults({ results, loading, hasSearched = false }: OrganicResultsProps) {
   if (loading) {
     return <div className="text-gray-500 text-center py-8 google-font">Loading results...</div>
   }
 
-  if (results.length === 0) {
+  if (results.length === 0 && hasSearched) {
     return <div className="text-gray-500 text-center py-8 google-font">No results found.</div>
+  }
+
+  if (results.length === 0) {
+    return null // Don't show anything if no search has been performed
   }
 
   return (
@@ -27,7 +33,7 @@ export default function OrganicResults({ results, loading }: OrganicResultsProps
         <div key={i} className="mb-6">
           <div className="mb-1 flex items-center gap-3">
             {result.favicon ? (
-              <img
+              <Image
                 src={result.favicon}
                 alt=""
                 width={16}
@@ -44,7 +50,7 @@ export default function OrganicResults({ results, loading }: OrganicResultsProps
                 }}
               />
             ) : (
-              <img
+              <Image
                 src={getFaviconUrl(result.url)}
                 alt=""
                 width={16}

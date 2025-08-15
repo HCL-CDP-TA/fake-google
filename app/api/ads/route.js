@@ -16,6 +16,8 @@ async function ensureDbAndTable() {
     utm_source TEXT DEFAULT 'google',
     utm_medium TEXT DEFAULT 'paid_search',
     utm_campaign TEXT,
+    utm_content TEXT,
+    utm_term TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
   )`)
 }

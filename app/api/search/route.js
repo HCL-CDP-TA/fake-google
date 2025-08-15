@@ -46,17 +46,26 @@ export async function GET(req) {
     const data = await response.json()
 
     if (!data.items) {
-      return Response.json([])
+      // If no items from Google API, use localized fallback
+      const localizedResults = getLocalizedFallbackResults(q, gl, lr, hl, location)
+      return Response.json(localizedResults)
     }
 
-    const results = data.items.map(item => ({
+    // Mix Google results with some localized results to make country selection more obvious
+    const googleResults = data.items.map(item => ({
       title: item.title,
       url: item.link,
       description: item.snippet || "No description available",
       favicon: item.pagemap?.cse_image?.[0]?.src || item.pagemap?.metatags?.[0]?.["og:image"] || null,
     }))
 
-    return Response.json(results)
+    // Add localized results at the beginning if country is not US
+    if (gl && gl !== "us") {
+      const localizedResults = getLocalizedFallbackResults(q, gl, lr, hl, location)
+      return Response.json([...localizedResults.slice(0, 2), ...googleResults.slice(0, 8)])
+    }
+
+    return Response.json(googleResults)
   } catch (error) {
     console.error("Error fetching search results:", error)
 
@@ -69,18 +78,18 @@ export async function GET(req) {
 // Helper function to generate localized fallback results
 function getLocalizedFallbackResults(q, gl, lr, hl, location) {
   const countryData = {
-    us: { domain: "com", lang: "en", region: "United States" },
-    uk: { domain: "co.uk", lang: "en", region: "United Kingdom" },
-    ca: { domain: "ca", lang: "en", region: "Canada" },
-    au: { domain: "com.au", lang: "en", region: "Australia" },
-    de: { domain: "de", lang: "de", region: "Germany" },
-    fr: { domain: "fr", lang: "fr", region: "France" },
-    es: { domain: "es", lang: "es", region: "Spain" },
-    it: { domain: "it", lang: "it", region: "Italy" },
-    jp: { domain: "co.jp", lang: "ja", region: "Japan" },
-    br: { domain: "com.br", lang: "pt", region: "Brazil" },
-    mx: { domain: "com.mx", lang: "es", region: "Mexico" },
-    in: { domain: "co.in", lang: "en", region: "India" },
+    us: { domain: "com", lang: "en", region: "United States", currency: "USD", tld: ".com" },
+    uk: { domain: "co.uk", lang: "en", region: "United Kingdom", currency: "GBP", tld: ".co.uk" },
+    ca: { domain: "ca", lang: "en", region: "Canada", currency: "CAD", tld: ".ca" },
+    au: { domain: "com.au", lang: "en", region: "Australia", currency: "AUD", tld: ".com.au" },
+    de: { domain: "de", lang: "de", region: "Germany", currency: "EUR", tld: ".de" },
+    fr: { domain: "fr", lang: "fr", region: "France", currency: "EUR", tld: ".fr" },
+    es: { domain: "es", lang: "es", region: "Spain", currency: "EUR", tld: ".es" },
+    it: { domain: "it", lang: "it", region: "Italy", currency: "EUR", tld: ".it" },
+    jp: { domain: "co.jp", lang: "ja", region: "Japan", currency: "JPY", tld: ".co.jp" },
+    br: { domain: "com.br", lang: "pt", region: "Brazil", currency: "BRL", tld: ".com.br" },
+    mx: { domain: "com.mx", lang: "es", region: "Mexico", currency: "MXN", tld: ".com.mx" },
+    in: { domain: "co.in", lang: "en", region: "India", currency: "INR", tld: ".co.in" },
   }
 
   const languageNames = {
@@ -104,39 +113,39 @@ function getLocalizedFallbackResults(q, gl, lr, hl, location) {
 
   return [
     {
-      title: `${q}${locationSuffix} - Top Results`,
+      title: `${q} ${country.region} - Local ${country.tld} Results`,
       url: `https://www.google.${country.domain}/search?q=${encodeURIComponent(q)}${
         location ? `+${encodeURIComponent(location)}` : ""
       }`,
-      description: `Comprehensive information about "${q}"${locationSuffix}. Find local businesses, reviews, and relevant content${
-        language !== "en" ? ` in ${langName}` : ""
-      }.`,
+      description: `🌍 Regional results for "${q}" in ${country.region}. Prices in ${country.currency}${
+        language !== "en" ? ` • Content in ${langName}` : ""
+      }${locationSuffix}.`,
       favicon: "https://www.google.com/favicon.ico",
     },
     {
-      title: `Local ${q} Services${locationSuffix}`,
+      title: `${q} Near Me - ${country.region} Locations`,
       url: `https://maps.google.${country.domain}/search/${encodeURIComponent(q)}${
         location ? `+${encodeURIComponent(location)}` : ""
       }`,
-      description: `Find local businesses and services for "${q}"${locationSuffix}. Reviews, hours, contact information, and directions.`,
+      description: `📍 Find "${q}" businesses in ${country.region}${locationSuffix}. Local reviews, opening hours, and contact details. Currency: ${country.currency}.`,
       favicon: "https://maps.google.com/favicon.ico",
     },
     {
-      title: `${q} - Wikipedia${language !== "en" ? ` (${langName})` : ""}`,
+      title: `${q} - ${country.region} Wikipedia${language !== "en" ? ` (${langName})` : ""}`,
       url: `https://${language}.wikipedia.org/wiki/${encodeURIComponent(q.replace(/ /g, "_"))}`,
-      description: `Encyclopedia article about "${q}"${
+      description: `📚 ${country.region}-focused information about "${q}"${
         language !== "en" ? ` in ${langName}` : ""
-      }. Comprehensive background information and references.`,
+      }. Regional context and local references included.`,
       favicon: "https://en.wikipedia.org/static/favicon/wikipedia.ico",
     },
     {
-      title: `News about ${q}${locationSuffix}`,
+      title: `${q} News - ${country.region} Coverage`,
       url: `https://news.google.${country.domain}/search?q=${encodeURIComponent(q)}${
         location ? `+${encodeURIComponent(location)}` : ""
       }`,
-      description: `Latest news and updates about "${q}"${locationSuffix}. Stay informed with real-time coverage${
+      description: `📰 Latest "${q}" news from ${country.region}${locationSuffix}${
         language !== "en" ? ` in ${langName}` : ""
-      }.`,
+      }. Local media coverage and regional updates.`,
       favicon: "https://ssl.gstatic.com/news/img/favicon_news.ico",
     },
   ]
