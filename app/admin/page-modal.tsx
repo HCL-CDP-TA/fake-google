@@ -1,5 +1,5 @@
 "use client"
-import { useState, useEffect, ChangeEvent, FormEvent } from "react"
+import { useState, useEffect, FormEvent } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -99,7 +99,7 @@ export default function Admin() {
     })
 
     if (response.ok) {
-      const data = await response.json()
+      await response.json()
       if (editing >= 0) {
         const newAds = [...ads]
         newAds[editing] = { keyword, ad }
@@ -177,7 +177,7 @@ export default function Admin() {
 
         // Generate campaign names
         const campaigns = (data.ads || []).map(
-          (_: any, index: number) => `${aiKeyword.replace(/\s+/g, "-").toLowerCase()}-campaign-${index + 1}`,
+          (_: AIGeneratedAd, index: number) => `${aiKeyword.replace(/\s+/g, "-").toLowerCase()}-campaign-${index + 1}`,
         )
         setAiCampaignNames(campaigns)
       } else {
