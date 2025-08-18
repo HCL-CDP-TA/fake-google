@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.3](https://github.com/HCL-CDP-TA/fake-google/compare/v1.0.2...v1.0.3) (2025-08-18)
+
+
+### Bug Fixes
+
+* deploy fixes ([655e7fa](https://github.com/HCL-CDP-TA/fake-google/commit/655e7fa7ced92551b5030aa1a5db2591aead9860))
+
 ## [1.0.2](https://github.com/HCL-CDP-TA/fake-google/compare/v1.0.1...v1.0.2) (2025-08-18)
 
 
