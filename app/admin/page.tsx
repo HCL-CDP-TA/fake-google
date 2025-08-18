@@ -30,8 +30,7 @@ type AdType = {
 }
 
 type AIGeneratedAd = {
-  title1: string
-  title2: string
+  title: string
   description: string
   description2: string
   target_audience: string
@@ -72,6 +71,11 @@ export default function Admin() {
   const [aiCampaignNames, setAiCampaignNames] = useState<string[]>([])
   const [isLoadingAds, setIsLoadingAds] = useState(true)
 
+  // AI Prompt configuration state
+  const [customPrompt, setCustomPrompt] = useState("")
+  const [useCustomPrompt, setUseCustomPrompt] = useState(false)
+  const [showPromptConfig, setShowPromptConfig] = useState(false)
+
   useEffect(() => {
     setIsLoadingAds(true)
     fetch("/api/ads")
@@ -85,6 +89,46 @@ export default function Admin() {
         setIsLoadingAds(false)
       })
   }, [])
+
+  // Load prompt configuration from localStorage
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const savedPrompt = localStorage.getItem("aiCustomPrompt")
+      const savedUseCustom = localStorage.getItem("aiUseCustomPrompt") === "true"
+
+      if (savedPrompt) {
+        setCustomPrompt(savedPrompt)
+      }
+      setUseCustomPrompt(savedUseCustom)
+    }
+  }, [])
+
+  // Save prompt configuration to localStorage
+  const savePromptConfig = () => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("aiCustomPrompt", customPrompt)
+      localStorage.setItem("aiUseCustomPrompt", useCustomPrompt.toString())
+    }
+  }
+
+  // Default AI prompt template
+  const getDefaultPrompt = () => {
+    return `Generate {numAds} different Google Ads for the keyword "{keyword}" with display URL "{displayUrl}" and landing URL "{landingUrl}".
+
+Each ad should target a different audience with distinct messaging:
+1. First ad: Target first-time buyers/beginners - emphasize trust, simplicity, guidance
+2. Second ad: Target comparison shoppers - emphasize value, features, competitive advantages  
+3. Third ad: Target established/experienced customers - emphasize advanced features, expert-level service, superior results
+
+For each ad, provide:
+- title (max 30 chars) - Primary headline
+- description (max 90 chars) - First description line
+- description2 (max 90 chars) - Second description line
+- target_audience (brief description for internal use)
+- campaign_focus (3-4 words describing the campaign angle)
+
+Return ONLY a valid JSON array with exactly {numAds} ads and no additional text or formatting.`
+  }
 
   useEffect(() => {
     const filtered = ads.filter(
@@ -168,17 +212,30 @@ export default function Admin() {
     setGeneratedAds([])
 
     try {
+      const requestBody: {
+        keyword: string
+        displayUrl: string
+        landingUrl: string
+        numAds: number
+        customPrompt?: string
+      } = {
+        keyword: aiKeyword,
+        displayUrl: aiDisplayUrl,
+        landingUrl: aiLandingUrl,
+        numAds: numAdsToGenerate,
+      }
+
+      // Include custom prompt if enabled and provided
+      if (useCustomPrompt && customPrompt.trim()) {
+        requestBody.customPrompt = customPrompt
+      }
+
       const response = await fetch("/api/ads/generate", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          keyword: aiKeyword,
-          displayUrl: aiDisplayUrl,
-          landingUrl: aiLandingUrl,
-          numAds: numAdsToGenerate,
-        }),
+        body: JSON.stringify(requestBody),
       })
 
       if (response.ok) {
@@ -210,7 +267,7 @@ export default function Admin() {
       const campaignName = aiCampaignNames[originalIndex]
 
       const newAd: AdType = {
-        title: genAd.title1,
+        title: genAd.title,
         display_url: aiDisplayUrl,
         url: aiLandingUrl,
         description: genAd.description,
@@ -528,10 +585,78 @@ export default function Admin() {
           {showAIGenerator && (
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">✨ AI Ad Generator</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  ✨ AI Ad Generator
+                  {useCustomPrompt && (
+                    <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-purple-100 text-purple-800">
+                      Custom Prompt
+                    </span>
+                  )}
+                </CardTitle>
                 <CardDescription>Generate multiple ad variations using AI to kickstart your campaigns</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
+                {/* Prompt Configuration */}
+                <div className="bg-gray-50 rounded-lg p-4 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <label className="text-sm font-medium text-gray-700">AI Prompt Configuration</label>
+                      <input
+                        type="checkbox"
+                        checked={useCustomPrompt}
+                        onChange={e => {
+                          setUseCustomPrompt(e.target.checked)
+                          savePromptConfig()
+                        }}
+                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      />
+                      <span className="text-sm text-gray-600">Use custom prompt</span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowPromptConfig(!showPromptConfig)}
+                      className="text-blue-600 hover:text-blue-800">
+                      {showPromptConfig ? "Hide" : "Configure"}
+                    </Button>
+                  </div>
+
+                  {showPromptConfig && (
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Custom AI Prompt Template
+                        </label>
+                        <Textarea
+                          value={customPrompt}
+                          onChange={e => setCustomPrompt(e.target.value)}
+                          placeholder={getDefaultPrompt()}
+                          rows={8}
+                          className="text-sm"
+                        />
+                        <div className="text-xs text-gray-500 mt-1">
+                          Use placeholders: {"{keyword}"}, {"{displayUrl}"}, {"{landingUrl}"}, {"{numAds}"}
+                        </div>
+                      </div>
+
+                      <div className="flex justify-between items-center">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setCustomPrompt(getDefaultPrompt())
+                            savePromptConfig()
+                          }}>
+                          Reset to Default
+                        </Button>
+                        <Button size="sm" onClick={savePromptConfig} className="bg-green-600 hover:bg-green-700">
+                          Save Prompt
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Target Keyword *</label>
                   <Input
@@ -647,7 +772,7 @@ export default function Admin() {
                                 className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
                               />
                               <div className="space-y-1">
-                                <div className="text-blue-600 font-medium">{ad.title1}</div>
+                                <div className="text-blue-600 font-medium">{ad.title}</div>
                                 <div className="text-green-600 text-sm">{aiDisplayUrl}</div>
                                 <div className="text-gray-700 text-sm">{ad.description}</div>
                                 {ad.description2 && <div className="text-gray-700 text-sm">{ad.description2}</div>}

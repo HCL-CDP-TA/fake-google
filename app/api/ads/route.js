@@ -29,7 +29,7 @@ export async function GET(req) {
   if (q) {
     // Find ads for this keyword (limit to 3, ordered by priority)
     const { rows } = await pool.query(
-      "SELECT * FROM ads WHERE LOWER(keyword) = LOWER($1) ORDER BY priority DESC, created_at ASC LIMIT 3",
+      "SELECT * FROM ads WHERE LOWER(keyword) = LOWER($1) ORDER BY priority ASC, created_at ASC LIMIT 3",
       [q],
     )
     // Attach UTM params to ad URL
@@ -47,7 +47,7 @@ export async function GET(req) {
     )
   }
   // Return all ads for admin
-  const getAllResult1 = await pool.query("SELECT * FROM ads ORDER BY keyword ASC, priority DESC, created_at ASC")
+  const getAllResult1 = await pool.query("SELECT * FROM ads ORDER BY keyword ASC, priority ASC, created_at ASC")
   return Response.json(
     getAllResult1.rows.map(row => ({
       keyword: row.keyword,
@@ -78,7 +78,7 @@ export async function POST(req) {
   // If editing, update by id (editing is index in admin list)
   if (editing >= 0) {
     // Get all ads to find the id at this index
-    const { rows } = await pool.query("SELECT id FROM ads ORDER BY keyword ASC, priority DESC, created_at ASC")
+    const { rows } = await pool.query("SELECT id FROM ads ORDER BY keyword ASC, priority ASC, created_at ASC")
     const id = rows[editing]?.id
     if (id) {
       await pool.query(
@@ -116,7 +116,7 @@ export async function POST(req) {
     )
   }
   // Return all ads for admin
-  const getAllResult2 = await pool.query("SELECT * FROM ads ORDER BY keyword ASC, priority DESC, created_at ASC")
+  const getAllResult2 = await pool.query("SELECT * FROM ads ORDER BY keyword ASC, priority ASC, created_at ASC")
   return Response.json(
     getAllResult2.rows.map(row => ({
       keyword: row.keyword,
@@ -139,13 +139,13 @@ export async function DELETE(req) {
   await ensureDbAndTable()
   const { index } = await req.json()
   // Get all ads to find the id at this index
-  const idResult = await pool.query("SELECT id FROM ads ORDER BY keyword ASC, priority DESC, created_at ASC")
+  const idResult = await pool.query("SELECT id FROM ads ORDER BY keyword ASC, priority ASC, created_at ASC")
   const id = idResult.rows[index]?.id
   if (id) {
     await pool.query("DELETE FROM ads WHERE id=$1", [id])
   }
   // Return all ads for admin
-  const allResult = await pool.query("SELECT * FROM ads ORDER BY keyword ASC, priority DESC, created_at ASC")
+  const allResult = await pool.query("SELECT * FROM ads ORDER BY keyword ASC, priority ASC, created_at ASC")
   return Response.json(
     allResult.rows.map(row => ({
       keyword: row.keyword,

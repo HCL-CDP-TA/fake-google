@@ -12,14 +12,20 @@ export async function GET(req) {
 
   try {
     // Use Google Custom Search API
-    const apiKey = process.env.GOOGLE_API_KEY
+    const apiKey = process.env.GOOGLE_SEARCH_API_KEY
     const searchEngineId = process.env.GOOGLE_SEARCH_ENGINE_ID
 
     if (!apiKey || !searchEngineId) {
+      console.log("Google Search API not configured:", {
+        hasApiKey: !!apiKey,
+        hasSearchEngineId: !!searchEngineId,
+      })
       // Fallback to demo results if API not configured
       const localizedResults = getLocalizedFallbackResults(q, gl, lr, hl, location)
       return Response.json(localizedResults)
     }
+
+    console.log("Using Google Search API for query:", q)
 
     // Build API URL with localization parameters
     const apiUrl = new URL("https://www.googleapis.com/customsearch/v1")
@@ -40,16 +46,21 @@ export async function GET(req) {
     const response = await fetch(apiUrl.toString())
 
     if (!response.ok) {
-      throw new Error("Google API request failed")
+      const errorText = await response.text()
+      console.error("Google API request failed:", response.status, response.statusText, errorText)
+      throw new Error(`Google API request failed: ${response.status} ${response.statusText}`)
     }
 
     const data = await response.json()
 
     if (!data.items) {
+      console.log("No items returned from Google API, using fallback")
       // If no items from Google API, use localized fallback
       const localizedResults = getLocalizedFallbackResults(q, gl, lr, hl, location)
       return Response.json(localizedResults)
     }
+
+    console.log(`Google API returned ${data.items.length} results`)
 
     // Mix Google results with some localized results to make country selection more obvious
     const googleResults = data.items.map(item => ({
@@ -62,10 +73,12 @@ export async function GET(req) {
     // Add localized results at the beginning if country is not US
     if (gl && gl !== "us") {
       const localizedResults = getLocalizedFallbackResults(q, gl, lr, hl, location)
+      // Mix: 2 localized + 8 Google results = 10 total
       return Response.json([...localizedResults.slice(0, 2), ...googleResults.slice(0, 8)])
     }
 
-    return Response.json(googleResults)
+    // For US or no country specified, return full Google results (up to 10)
+    return Response.json(googleResults.slice(0, 10))
   } catch (error) {
     console.error("Error fetching search results:", error)
 
@@ -146,7 +159,43 @@ function getLocalizedFallbackResults(q, gl, lr, hl, location) {
       description: `📰 Latest "${q}" news from ${country.region}${locationSuffix}${
         language !== "en" ? ` in ${langName}` : ""
       }. Local media coverage and regional updates.`,
-      favicon: "https://ssl.gstatic.com/news/img/favicon_news.ico",
+      favicon: "https://www.google.com/favicon.ico",
+    },
+    {
+      title: `Best ${q} Reviews ${country.region}`,
+      url: `https://www.${q.replace(/\s+/g, "-").toLowerCase()}-reviews.${country.domain}`,
+      description: `⭐ Customer reviews and ratings for "${q}" in ${country.region}. Compare options, read testimonials, and find the best choice.`,
+      favicon: "https://www.google.com/favicon.ico",
+    },
+    {
+      title: `${q} Online Store - ${country.region}`,
+      url: `https://shop.${q.replace(/\s+/g, "").toLowerCase()}${country.tld}`,
+      description: `🛒 Shop for "${q}" online in ${country.region}. Free shipping, secure checkout, and ${country.currency} pricing.`,
+      favicon: "https://www.google.com/favicon.ico",
+    },
+    {
+      title: `${q} Forums & Community - ${country.region}`,
+      url: `https://forum.${q.replace(/\s+/g, "").toLowerCase()}${country.tld}`,
+      description: `💬 Join the "${q}" community in ${country.region}. Ask questions, share experiences, and connect with other users.`,
+      favicon: "https://www.google.com/favicon.ico",
+    },
+    {
+      title: `${q} Compare Prices - ${country.region}`,
+      url: `https://compare.${q.replace(/\s+/g, "-").toLowerCase()}${country.tld}`,
+      description: `💰 Compare "${q}" prices from top retailers in ${country.region}. Find deals, discounts, and save money on your purchase.`,
+      favicon: "https://www.google.com/favicon.ico",
+    },
+    {
+      title: `${q} How-To Guide & Tips`,
+      url: `https://guide.${q.replace(/\s+/g, "-").toLowerCase()}${country.tld}`,
+      description: `📖 Complete guide to "${q}" with step-by-step instructions, tips, and expert advice for ${country.region} users.`,
+      favicon: "https://www.google.com/favicon.ico",
+    },
+    {
+      title: `${q} ${new Date().getFullYear()} - Latest Updates`,
+      url: `https://www.${q.replace(/\s+/g, "-").toLowerCase()}-updates${country.tld}`,
+      description: `🆕 Latest "${q}" developments and updates for ${new Date().getFullYear()}. Stay informed about new features and changes.`,
+      favicon: "https://www.google.com/favicon.ico",
     },
   ]
 }
