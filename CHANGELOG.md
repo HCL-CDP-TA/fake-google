@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.1.0](https://github.com/HCL-CDP-TA/fake-google/compare/v1.0.3...v1.1.0) (2025-08-18)
+
+
+### Features
+
+* added prompt override ([47643a6](https://github.com/HCL-CDP-TA/fake-google/commit/47643a6d95c59d01a7ac2a5110ab489f6b277888))
+
+
+### Bug Fixes
+
+* added robots.txt ([068c5a1](https://github.com/HCL-CDP-TA/fake-google/commit/068c5a1981a4c7af63d226183f768c2b13b8ee12))
+
 ## [1.0.3](https://github.com/HCL-CDP-TA/fake-google/compare/v1.0.2...v1.0.3) (2025-08-18)
 
 
