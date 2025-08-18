@@ -3,7 +3,8 @@ version: "3.8"
 services:
   # PostgreSQL Database
   postgres:
-    image: postgres:15-alpine
+    platform: linux/amd64
+    image: postgres:16
     container_name: fake-google-db-dev
     environment:
       POSTGRES_DB: fakegoogle
@@ -26,9 +27,11 @@ services:
 
   # Next.js Application (Development)
   app:
+    platform: linux/amd64
     build:
       context: .
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile
+      target: builder
     container_name: fake-google-app-dev
     environment:
       NODE_ENV: development
@@ -47,6 +50,7 @@ services:
       postgres:
         condition: service_healthy
     restart: unless-stopped
+    command: npm run dev
     networks:
       - fake-google-network-dev
 
