@@ -13,7 +13,14 @@ check_docker() {
         exit 1
     fi
     
-    if ! command -v docker-compose >/dev/null 2>&1 && ! docker compose version >/dev/null 2>&1; then
+    # Check for newer docker compose (preferred) or legacy docker-compose
+    if docker compose version >/dev/null 2>&1; then
+        DOCKER_COMPOSE_CMD="docker compose"
+        echo -e "${GREEN}✅ Using newer docker compose${NC}"
+    elif command -v docker-compose >/dev/null 2>&1; then
+        DOCKER_COMPOSE_CMD="docker-compose"
+        echo -e "${YELLOW}⚠️  Using legacy docker-compose${NC}"
+    else
         echo -e "${RED}❌ Docker Compose is not available${NC}"
         echo "Please install Docker Compose or update Docker to a version with built-in compose"
         exit 1
@@ -127,8 +134,8 @@ stop_containers() {
     echo -e "${YELLOW}🛑 Stopping containers...${NC}"
     
     # Try both compose files to ensure we stop everything
-    docker-compose -f docker-compose.yml down 2>/dev/null || true
-    docker-compose -f docker-compose.dev.yml down 2>/dev/null || true
+    $DOCKER_COMPOSE_CMD -f docker-compose.yml down 2>/dev/null || true
+    $DOCKER_COMPOSE_CMD -f docker-compose.dev.yml down 2>/dev/null || true
     
     echo -e "${GREEN}✅ Containers stopped${NC}"
 }
@@ -144,7 +151,7 @@ cleanup() {
     if [ "$CLEAN_BUILD" = true ]; then
         echo "Removing unused images..."
         docker image prune -f 2>/dev/null || true
-        docker-compose -f "$COMPOSE_FILE" build --no-cache
+        $DOCKER_COMPOSE_CMD -f "$COMPOSE_FILE" build --no-cache
     fi
     
     echo -e "${GREEN}✅ Cleanup complete${NC}"
@@ -155,9 +162,9 @@ build_images() {
     echo -e "${YELLOW}🔨 Building images...${NC}"
     
     if [ "$CLEAN_BUILD" = true ]; then
-        docker-compose -f "$COMPOSE_FILE" build --no-cache
+        $DOCKER_COMPOSE_CMD -f "$COMPOSE_FILE" build --no-cache
     else
-        docker-compose -f "$COMPOSE_FILE" build
+        $DOCKER_COMPOSE_CMD -f "$COMPOSE_FILE" build
     fi
     
     if [ $? -eq 0 ]; then
@@ -177,7 +184,7 @@ start_containers() {
     
     echo -e "${YELLOW}🚀 Starting containers...${NC}"
     
-    docker-compose -f "$COMPOSE_FILE" up -d
+    $DOCKER_COMPOSE_CMD -f "$COMPOSE_FILE" up -d
     
     if [ $? -eq 0 ]; then
         echo -e "${GREEN}✅ Containers started successfully${NC}"
@@ -195,21 +202,21 @@ start_containers() {
 show_logs() {
     if [ "$LOGS" = true ] && [ "$BUILD_ONLY" = false ]; then
         echo -e "${BLUE}📋 Showing logs (Ctrl+C to exit)...${NC}"
-        docker-compose -f "$COMPOSE_FILE" logs -f
+        $DOCKER_COMPOSE_CMD -f "$COMPOSE_FILE" logs -f
     fi
 }
 
 # Function to show status
 show_status() {
     echo -e "${BLUE}📊 Container Status:${NC}"
-    docker-compose -f "$COMPOSE_FILE" ps
+    $DOCKER_COMPOSE_CMD -f "$COMPOSE_FILE" ps
     echo ""
     
     # Check if services are healthy
     echo -e "${BLUE}🏥 Health Checks:${NC}"
     
     # Check database
-    if docker-compose -f "$COMPOSE_FILE" exec -T postgres pg_isready -U postgres -d fakegoogle >/dev/null 2>&1; then
+    if $DOCKER_COMPOSE_CMD -f "$COMPOSE_FILE" exec -T postgres pg_isready -U postgres -d fakegoogle >/dev/null 2>&1; then
         echo -e "${GREEN}✅ Database: Healthy${NC}"
     else
         echo -e "${RED}❌ Database: Unhealthy${NC}"
@@ -288,22 +295,10 @@ main() {
     echo "========================================"
     
     if [ "$BUILD_ONLY" = false ] && [ "$LOGS" = false ]; then
-        echo -e "${BLUE}💡 Use 'docker-compose -f $COMPOSE_FILE logs -f' to view logs${NC}"
-        echo -e "${BLUE}💡 Use 'docker-compose -f $COMPOSE_FILE down' to stop${NC}"
+        echo -e "${BLUE}💡 Use '$DOCKER_COMPOSE_CMD -f $COMPOSE_FILE logs -f' to view logs${NC}"
+        echo -e "${BLUE}💡 Use '$DOCKER_COMPOSE_CMD -f $COMPOSE_FILE down' to stop${NC}"
     fi
 }
-
-# Check if Docker is running
-if ! docker info >/dev/null 2>&1; then
-    echo -e "${RED}❌ Docker is not running. Please start Docker and try again.${NC}"
-    exit 1
-fi
-
-# Check if docker-compose is available
-if ! command -v docker-compose >/dev/null 2>&1; then
-    echo -e "${RED}❌ docker-compose is not installed. Please install it and try again.${NC}"
-    exit 1
-fi
 
 # Run main function
 main
