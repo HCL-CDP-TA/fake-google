@@ -1,9 +1,30 @@
 #!/bin/bash
 
-# Fake Google Deploy Script
-# This script handles the complete deployment of the fake-google app and database
+# Fake Google Deployment Script
+# Simple Docker-based deployment for all environments
 
 set -e  # Exit on any error
+
+# Check Docker prerequisites
+check_docker() {
+    if ! command -v docker >/dev/null 2>&1; then
+        echo -e "${RED}❌ Docker is not installed${NC}"
+        echo "Please install Docker: https://docs.docker.com/get-docker/"
+        exit 1
+    fi
+    
+    if ! command -v docker-compose >/dev/null 2>&1 && ! docker compose version >/dev/null 2>&1; then
+        echo -e "${RED}❌ Docker Compose is not available${NC}"
+        echo "Please install Docker Compose or update Docker to a version with built-in compose"
+        exit 1
+    fi
+    
+    if ! docker info >/dev/null 2>&1; then
+        echo -e "${RED}❌ Docker is not running${NC}"
+        echo "Please start Docker and try again"
+        exit 1
+    fi
+}
 
 # Colors for output
 RED='\033[0;31m'
@@ -13,41 +34,46 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Configuration
+COMPOSE_FILE="docker-compose.yml"
+DEV_COMPOSE_FILE="docker-compose.dev.yml"
 APP_NAME="fake-google"
-APP_PORT=3000
-DB_NAME="fakegoogle"
-ADMIN_CONN_DEFAULT="postgres://postgres:admin@localhost:5432/postgres"
 
 # Default values
-ADMIN_CONN="${DATABASE_ADMIN_URL:-$ADMIN_CONN_DEFAULT}"
+DEVELOPMENT=false
 BUILD_ONLY=false
-SKIP_DB=false
-SKIP_DEPS=false
+CLEAN_BUILD=false
+LOGS=false
+STOP_ONLY=false
 
 # Help function
 show_help() {
+    echo "Fake Google - Docker Deployment"
+    echo "================================"
+    echo ""
     echo "Usage: $0 [options]"
     echo ""
     echo "Options:"
     echo "  -h, --help              Show this help message"
-    echo "  -b, --build-only        Only build the app, don't start it"
-    echo "  -d, --skip-db           Skip database setup"
-    echo "  -n, --skip-deps         Skip npm install"
-    echo "  --admin-conn STRING     Database admin connection string"
-    echo "                          (default: $ADMIN_CONN_DEFAULT)"
+    echo "  -d, --dev               Development mode (hot reload)"
+    echo "  -b, --build-only        Only build images, don't start"
+    echo "  -c, --clean             Clean build (no cache)"
+    echo "  -l, --logs              Show logs after starting"
+    echo "  -s, --stop              Stop containers only"
     echo ""
-    echo "Environment Variables:"
-    echo "  DATABASE_ADMIN_URL      Admin database connection string"
-    echo "  DATABASE_URL            App database connection string"
-    echo "  GOOGLE_SEARCH_API_KEY   Google Custom Search API key"
-    echo "  GOOGLE_SEARCH_ENGINE_ID Google Custom Search Engine ID"
-    echo "  GOOGLE_GEMINI_API_KEY   Google Gemini API key for AI generation"
+    echo "Quick Start:"
+    echo "  ./deploy.sh                       # Production deployment"
+    echo "  ./deploy.sh --dev                 # Development with hot reload"
+    echo "  ./deploy.sh --clean               # Clean production build"
     echo ""
-    echo "Examples:"
-    echo "  ./deploy.sh                                    # Full deployment"
-    echo "  ./deploy.sh --build-only                      # Build only"
-    echo "  ./deploy.sh --skip-db                         # Skip database setup"
-    echo "  ./deploy.sh --admin-conn \"postgres://...\"    # Custom admin connection"
+    echo "Management:"
+    echo "  ./deploy.sh --stop                # Stop all containers"
+    echo "  ./deploy.sh --logs                # View container logs"
+    echo ""
+    echo "Prerequisites:"
+    echo "  • Docker and Docker Compose installed"
+    echo "  • .env file configured (optional)"
+    echo ""
+    echo "For port configuration: ./port-config.sh interactive"
 }
 
 # Parse command line arguments
@@ -57,21 +83,26 @@ while [[ $# -gt 0 ]]; do
             show_help
             exit 0
             ;;
+        -d|--dev)
+            DEVELOPMENT=true
+            COMPOSE_FILE="$DEV_COMPOSE_FILE"
+            shift
+            ;;
         -b|--build-only)
             BUILD_ONLY=true
             shift
             ;;
-        -d|--skip-db)
-            SKIP_DB=true
+        -c|--clean)
+            CLEAN_BUILD=true
             shift
             ;;
-        -n|--skip-deps)
-            SKIP_DEPS=true
+        -l|--logs)
+            LOGS=true
             shift
             ;;
-        --admin-conn)
-            ADMIN_CONN="$2"
-            shift 2
+        -s|--stop)
+            STOP_ONLY=true
+            shift
             ;;
         *)
             echo -e "${RED}Unknown option: $1${NC}"
@@ -81,207 +112,198 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-echo -e "${BLUE}🚀 Starting deployment of ${APP_NAME}...${NC}"
+# Set compose file based on development flag
+if [ "$DEVELOPMENT" = true ]; then
+    COMPOSE_FILE="$DEV_COMPOSE_FILE"
+    echo -e "${BLUE}🔧 Using development configuration${NC}"
+else
+    echo -e "${BLUE}🚀 Using production configuration${NC}"
+fi
+
 echo "========================================"
 
-# Function to check if a port is in use
-check_port() {
-    local port=$1
-    if lsof -ti:$port >/dev/null 2>&1; then
-        return 0  # Port is in use
-    else
-        return 1  # Port is free
-    fi
+# Function to stop containers
+stop_containers() {
+    echo -e "${YELLOW}🛑 Stopping containers...${NC}"
+    
+    # Try both compose files to ensure we stop everything
+    docker-compose -f docker-compose.yml down 2>/dev/null || true
+    docker-compose -f docker-compose.dev.yml down 2>/dev/null || true
+    
+    echo -e "${GREEN}✅ Containers stopped${NC}"
 }
 
-# Function to stop existing app
-stop_app() {
-    echo -e "${YELLOW}📦 Stopping existing app instances...${NC}"
+# Function to clean up old images and containers
+cleanup() {
+    echo -e "${YELLOW}🧹 Cleaning up...${NC}"
     
-    # Kill processes on the app port
-    if check_port $APP_PORT; then
-        echo "Found processes on port $APP_PORT, stopping them..."
-        lsof -ti:$APP_PORT | xargs kill -9 2>/dev/null || true
-        sleep 2
-        
-        if check_port $APP_PORT; then
-            echo -e "${RED}Warning: Could not stop all processes on port $APP_PORT${NC}"
-        else
-            echo -e "${GREEN}✅ Stopped processes on port $APP_PORT${NC}"
-        fi
-    else
-        echo "No processes found on port $APP_PORT"
+    # Remove stopped containers
+    docker container prune -f 2>/dev/null || true
+    
+    # Remove unused images if clean build
+    if [ "$CLEAN_BUILD" = true ]; then
+        echo "Removing unused images..."
+        docker image prune -f 2>/dev/null || true
+        docker-compose -f "$COMPOSE_FILE" build --no-cache
     fi
     
-    # Also try to kill any node processes with our app name
-    pkill -f "next" 2>/dev/null || true
-    pkill -f "$APP_NAME" 2>/dev/null || true
+    echo -e "${GREEN}✅ Cleanup complete${NC}"
 }
 
-# Function to setup database
-setup_database() {
-    if [ "$SKIP_DB" = true ]; then
-        echo -e "${YELLOW}⏭️  Skipping database setup${NC}"
-        return
+# Function to build images
+build_images() {
+    echo -e "${YELLOW}🔨 Building images...${NC}"
+    
+    if [ "$CLEAN_BUILD" = true ]; then
+        docker-compose -f "$COMPOSE_FILE" build --no-cache
+    else
+        docker-compose -f "$COMPOSE_FILE" build
     fi
-    
-    echo -e "${YELLOW}🗄️  Setting up database...${NC}"
-    
-    # Check if create-db-and-table.sh exists
-    if [ ! -f "./create-db-and-table.sh" ]; then
-        echo -e "${RED}Error: create-db-and-table.sh not found${NC}"
-        exit 1
-    fi
-    
-    # Make sure the script is executable
-    chmod +x ./create-db-and-table.sh
-    
-    # Run database setup
-    echo "Running database setup with admin connection: ${ADMIN_CONN%/*}/..."
-    ./create-db-and-table.sh "$ADMIN_CONN" "$DB_NAME"
     
     if [ $? -eq 0 ]; then
-        echo -e "${GREEN}✅ Database setup complete${NC}"
+        echo -e "${GREEN}✅ Images built successfully${NC}"
     else
-        echo -e "${RED}❌ Database setup failed${NC}"
+        echo -e "${RED}❌ Image build failed${NC}"
         exit 1
     fi
 }
 
-# Function to install dependencies
-install_dependencies() {
-    if [ "$SKIP_DEPS" = true ]; then
-        echo -e "${YELLOW}⏭️  Skipping dependency installation${NC}"
-        return
-    fi
-    
-    echo -e "${YELLOW}📦 Installing dependencies...${NC}"
-    
-    if [ ! -f "package.json" ]; then
-        echo -e "${RED}Error: package.json not found${NC}"
-        exit 1
-    fi
-    
-    npm install
-    
-    if [ $? -eq 0 ]; then
-        echo -e "${GREEN}✅ Dependencies installed${NC}"
-    else
-        echo -e "${RED}❌ Failed to install dependencies${NC}"
-        exit 1
-    fi
-}
-
-# Function to build the app
-build_app() {
-    echo -e "${YELLOW}🔨 Building the application...${NC}"
-    
-    npm run build
-    
-    if [ $? -eq 0 ]; then
-        echo -e "${GREEN}✅ Build complete${NC}"
-    else
-        echo -e "${RED}❌ Build failed${NC}"
-        exit 1
-    fi
-}
-
-# Function to start the app
-start_app() {
+# Function to start containers
+start_containers() {
     if [ "$BUILD_ONLY" = true ]; then
-        echo -e "${YELLOW}⏭️  Build-only mode, not starting the app${NC}"
+        echo -e "${YELLOW}⏭️  Build-only mode, not starting containers${NC}"
         return
     fi
     
-    echo -e "${YELLOW}🚀 Starting the application...${NC}"
+    echo -e "${YELLOW}🚀 Starting containers...${NC}"
     
-    # Check required environment variables
-    if [ -z "$DATABASE_URL" ]; then
-        echo -e "${YELLOW}Warning: DATABASE_URL not set. Using default connection string.${NC}"
-        export DATABASE_URL="postgres://postgres:admin@localhost:5432/$DB_NAME"
+    docker-compose -f "$COMPOSE_FILE" up -d
+    
+    if [ $? -eq 0 ]; then
+        echo -e "${GREEN}✅ Containers started successfully${NC}"
+        echo ""
+        echo -e "${GREEN}🌐 Application: http://localhost:3000${NC}"
+        echo -e "${GREEN}👤 Admin Panel: http://localhost:3000/admin${NC}"
+        echo -e "${GREEN}🗄️  Database: localhost:5432${NC}"
+    else
+        echo -e "${RED}❌ Failed to start containers${NC}"
+        exit 1
+    fi
+}
+
+# Function to show logs
+show_logs() {
+    if [ "$LOGS" = true ] && [ "$BUILD_ONLY" = false ]; then
+        echo -e "${BLUE}📋 Showing logs (Ctrl+C to exit)...${NC}"
+        docker-compose -f "$COMPOSE_FILE" logs -f
+    fi
+}
+
+# Function to show status
+show_status() {
+    echo -e "${BLUE}📊 Container Status:${NC}"
+    docker-compose -f "$COMPOSE_FILE" ps
+    echo ""
+    
+    # Check if services are healthy
+    echo -e "${BLUE}🏥 Health Checks:${NC}"
+    
+    # Check database
+    if docker-compose -f "$COMPOSE_FILE" exec -T postgres pg_isready -U postgres -d fakegoogle >/dev/null 2>&1; then
+        echo -e "${GREEN}✅ Database: Healthy${NC}"
+    else
+        echo -e "${RED}❌ Database: Unhealthy${NC}"
     fi
     
-    # Start the app in production mode
-    echo "Starting app on port $APP_PORT..."
-    npm run start &
-    APP_PID=$!
-    
-    # Wait a moment for the app to start
-    sleep 3
-    
-    # Check if the app is running
-    if check_port $APP_PORT; then
-        echo -e "${GREEN}✅ Application started successfully on port $APP_PORT${NC}"
-        echo -e "${GREEN}🌐 Visit: http://localhost:$APP_PORT${NC}"
-        echo -e "${GREEN}👤 Admin: http://localhost:$APP_PORT/admin${NC}"
-        echo -e "${BLUE}📝 App PID: $APP_PID${NC}"
+    # Check app
+    if curl -f http://localhost:3000 >/dev/null 2>&1; then
+        echo -e "${GREEN}✅ Application: Healthy${NC}"
     else
-        echo -e "${RED}❌ Application failed to start on port $APP_PORT${NC}"
-        exit 1
+        echo -e "${YELLOW}⏳ Application: Starting up...${NC}"
     fi
 }
 
 # Function to show environment info
 show_environment() {
     echo -e "${BLUE}📋 Environment Information:${NC}"
-    echo "   App Name: $APP_NAME"
-    echo "   App Port: $APP_PORT"
-    echo "   Database: $DB_NAME"
-    echo "   Admin Connection: ${ADMIN_CONN%/*}/..."
+    echo "   Mode: $([ "$DEVELOPMENT" = true ] && echo "Development" || echo "Production")"
+    echo "   Compose File: $COMPOSE_FILE"
+    echo "   Clean Build: $([ "$CLEAN_BUILD" = true ] && echo "Yes" || echo "No")"
+    echo "   Build Only: $([ "$BUILD_ONLY" = true ] && echo "Yes" || echo "No")"
+    echo ""
     
-    if [ -n "$DATABASE_URL" ]; then
-        echo "   App Database URL: ${DATABASE_URL%/*}/..."
+    # Check for .env file
+    if [ -f ".env" ]; then
+        echo -e "${GREEN}✅ .env file found${NC}"
+    elif [ -f ".env.local" ]; then
+        echo -e "${GREEN}✅ .env.local file found${NC}"
     else
-        echo "   App Database URL: (will use default)"
-    fi
-    
-    if [ -n "$GOOGLE_SEARCH_API_KEY" ]; then
-        echo "   Google Search API: ✅ Configured"
-    else
-        echo "   Google Search API: ❌ Not configured"
-    fi
-    
-    if [ -n "$GOOGLE_GEMINI_API_KEY" ]; then
-        echo "   Google Gemini API: ✅ Configured"
-    else
-        echo "   Google Gemini API: ❌ Not configured"
+        echo -e "${YELLOW}⚠️  No .env file found (will use defaults)${NC}"
     fi
     
     echo ""
 }
 
-# Function to cleanup on exit
-cleanup() {
-    if [ "$BUILD_ONLY" = false ] && [ -n "$APP_PID" ]; then
-        echo -e "\n${YELLOW}🛑 Shutting down...${NC}"
-        kill $APP_PID 2>/dev/null || true
+# Cleanup function for graceful exit
+cleanup_on_exit() {
+    if [ "$LOGS" = true ]; then
+        echo -e "\n${YELLOW}🛑 Stopping log stream...${NC}"
     fi
 }
 
 # Set up cleanup trap
-trap cleanup EXIT INT TERM
+trap cleanup_on_exit EXIT INT TERM
 
 # Main deployment sequence
 main() {
-    show_environment
-    
-    stop_app
-    setup_database
-    install_dependencies
-    build_app
-    start_app
-    
-    echo ""
-    echo -e "${GREEN}🎉 Deployment complete!${NC}"
+    echo -e "${BLUE}🚀 Fake Google Deployment${NC}"
     echo "========================================"
     
+    # Check Docker prerequisites first
+    check_docker
+    
+    show_environment
+    
+    # If stop only, just stop and exit
+    if [ "$STOP_ONLY" = true ]; then
+        stop_containers
+        return
+    fi
+    
+    stop_containers
+    cleanup
+    build_images
+    start_containers
+    
+    # Wait a moment for services to start
     if [ "$BUILD_ONLY" = false ]; then
-        echo -e "${BLUE}💡 Press Ctrl+C to stop the application${NC}"
-        
-        # Keep the script running to monitor the app
-        wait $APP_PID
+        sleep 5
+        show_status
+    fi
+    
+    show_logs
+    
+    echo ""
+    echo -e "${GREEN}🎉 Docker deployment complete!${NC}"
+    echo "========================================"
+    
+    if [ "$BUILD_ONLY" = false ] && [ "$LOGS" = false ]; then
+        echo -e "${BLUE}💡 Use 'docker-compose -f $COMPOSE_FILE logs -f' to view logs${NC}"
+        echo -e "${BLUE}💡 Use 'docker-compose -f $COMPOSE_FILE down' to stop${NC}"
     fi
 }
+
+# Check if Docker is running
+if ! docker info >/dev/null 2>&1; then
+    echo -e "${RED}❌ Docker is not running. Please start Docker and try again.${NC}"
+    exit 1
+fi
+
+# Check if docker-compose is available
+if ! command -v docker-compose >/dev/null 2>&1; then
+    echo -e "${RED}❌ docker-compose is not installed. Please install it and try again.${NC}"
+    exit 1
+fi
 
 # Run main function
 main

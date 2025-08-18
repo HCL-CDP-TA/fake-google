@@ -1,8 +1,24 @@
 # Fake Google - Deployment Guide
 
-This comprehensive guide covers deployment methods with special focus on multi-app server environments and port conflict resolution.
+This guide covers Docker-based deployment with port conflict resolution for multi-app server environments.
 
-## 🔧 Port Configuration (Multi-App Deployments)
+## 🚀 Quick Start
+
+```bash
+# Clone and deploy
+git clone https://github.com/HCL-CDP-TA/fake-google.git
+cd fake-google
+
+# Configure ports (if needed for multi-app servers)
+./port-config.sh interactive
+
+# Deploy
+./deploy.sh
+
+# Access: http://localhost:3001
+```
+
+## 🐳 Docker Deployment (Primary Method)
 
 **Important**: This application is designed to avoid common port conflicts in multi-app server environments.
 
@@ -64,17 +80,17 @@ DEV_DB_PORT=5434
 ### Quick Start with Docker
 
 ```bash
-# Production deployment with Docker
-./docker-deploy.sh
+# Production deployment
+./deploy.sh
 
-# Development deployment with Docker
-./docker-deploy.sh dev
+# Development deployment with hot reload
+./deploy.sh --dev
 
-# Build only (for CI/CD)
-./docker-deploy.sh build
+# Clean build (rebuild from scratch)
+./deploy.sh --clean
 
 # Stop all containers
-./docker-deploy.sh stop
+./deploy.sh --stop
 ```
 
 ### Docker Prerequisites
@@ -166,10 +182,10 @@ docker-compose logs -f                  # View logs
 2. Copy the environment template:
 
    ```bash
-   cp .env.example .env.local
+   cp .env.example .env
    ```
 
-3. Edit `.env.local` with your configuration:
+3. Edit `.env` with your configuration:
 
    ```bash
    # Port Configuration
@@ -186,7 +202,7 @@ docker-compose logs -f                  # View logs
    GOOGLE_GEMINI_API_KEY=your_gemini_key
    ```
 
-## Deploy Script Options
+**Note**: The deploy script automatically loads environment variables from `.env` file.## Deploy Script Options
 
 ### Basic Usage
 

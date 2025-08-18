@@ -6,39 +6,31 @@ A realistic Google search interface demo for martech pipeline demonstrations, co
 
 ## 🚀 Quick Start
 
-### Option 1: Docker Deployment (Recommended)
+### One-Command Deployment
 
 ```bash
 # Clone the repository
 git clone https://github.com/HCL-CDP-TA/fake-google.git
 cd fake-google
 
-# Configure ports (for multi-app servers)
+# Configure ports (optional - for multi-app servers)
 ./port-config.sh interactive
 
 # Deploy with Docker
-./docker-deploy.sh build
+./deploy.sh
 
 # Access the application
 open http://localhost:3001
 ```
 
-### Option 2: Traditional Deployment
+### Development Mode
 
 ```bash
-# Clone and deploy
-git clone https://github.com/HCL-CDP-TA/fake-google.git
-cd fake-google
+# Development with hot reload
+./deploy.sh --dev
 
-# Configure environment
-cp .env.example .env
-# Edit .env with your settings
-
-# Deploy
-./deploy.sh
-
-# Access the application
-open http://localhost:3001
+# Access the development app
+open http://localhost:3002
 ```
 
 ## ✨ Features
@@ -133,14 +125,15 @@ cp .env.example .env.local
 npm run dev
 ```
 
-### Available Scripts
+### Available Commands
 
 ```bash
-npm run dev          # Start development server
-npm run build        # Build for production
-npm run start        # Start production server
-npm run lint         # Run ESLint
-npm run type-check   # TypeScript type checking
+./deploy.sh              # Production deployment
+./deploy.sh --dev        # Development with hot reload
+./deploy.sh --clean      # Clean build (rebuild from scratch)
+./deploy.sh --stop       # Stop all containers
+./deploy.sh --logs       # View container logs
+./deploy.sh --help       # Show all options
 ```
 
 ## 🔑 API Configuration
@@ -178,26 +171,30 @@ Access the admin panel at `/admin` to:
 - **Monitor Performance**: View campaign metrics and performance
 - **UTM Management**: Configure tracking parameters
 
-## 🐳 Docker Deployment
+## 🐳 Deployment
 
 ### Production
 
 ```bash
 # Build and start
-./docker-deploy.sh build
+./deploy.sh
 
 # Other commands
-./docker-deploy.sh start    # Start existing containers
-./docker-deploy.sh stop     # Stop containers
-./docker-deploy.sh restart  # Restart containers
-./docker-deploy.sh logs     # View logs
+./deploy.sh --stop       # Stop containers
+./deploy.sh --clean      # Clean rebuild
+./deploy.sh --logs       # View logs
 ```
 
 ### Development with Hot Reload
 
 ```bash
-./docker-deploy.sh dev
+./deploy.sh --dev
 ```
+
+## Prerequisites
+
+- **Docker & Docker Compose** - [Install Docker](https://docs.docker.com/get-docker/)
+- **Optional**: Google API keys for enhanced functionality
 
 ## 🔧 Environment Variables
 
