@@ -1,19 +1,20 @@
+version: "3.8"
+
 services:
   # PostgreSQL Database
   postgres:
-    platform: linux/amd64
-    image: postgres:16
-    container_name: fake-google-db
+    image: postgres:15-alpine
+    container_name: fake-google-db-dev
     environment:
       POSTGRES_DB: fakegoogle
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: admin
       PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
-      - postgres_data:/var/lib/postgresql/data/pgdata
+      - postgres_data_dev:/var/lib/postgresql/data/pgdata
       - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
     ports:
-      - "${DB_PORT:-5433}:5432" # Default to 5433 to avoid conflicts
+      - "${DEV_DB_PORT:-5434}:5432" # Default to 5434 for dev to avoid conflicts
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d fakegoogle"]
       interval: 10s
@@ -21,35 +22,38 @@ services:
       retries: 5
     restart: unless-stopped
     networks:
-      - fake-google-network
+      - fake-google-network-dev
 
-  # Next.js Application
+  # Next.js Application (Development)
   app:
-    platform: linux/amd64
     build:
       context: .
-      dockerfile: Dockerfile
-    container_name: fake-google-app
+      dockerfile: Dockerfile.dev
+    container_name: fake-google-app-dev
     environment:
-      NODE_ENV: production
+      NODE_ENV: development
       DATABASE_URL: postgres://postgres:admin@postgres:5432/fakegoogle
       GOOGLE_SEARCH_API_KEY: ${GOOGLE_SEARCH_API_KEY:-}
       GOOGLE_SEARCH_ENGINE_ID: ${GOOGLE_SEARCH_ENGINE_ID:-}
       GOOGLE_GEMINI_API_KEY: ${GOOGLE_GEMINI_API_KEY:-}
       PORT: 3000
     ports:
-      - "${APP_PORT:-3001}:3000" # Default to 3001 to avoid conflicts
+      - "${DEV_APP_PORT:-3002}:3000" # Default to 3002 for dev to avoid conflicts
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.next
     depends_on:
       postgres:
         condition: service_healthy
     restart: unless-stopped
     networks:
-      - fake-google-network
+      - fake-google-network-dev
 
 volumes:
-  postgres_data:
+  postgres_data_dev:
     driver: local
 
 networks:
-  fake-google-network:
+  fake-google-network-dev:
     driver: bridge
