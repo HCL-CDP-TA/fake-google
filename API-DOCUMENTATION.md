@@ -20,7 +20,7 @@ Currently, the APIs are open and do not require authentication. In production en
 
 ### Get Search Results
 
-Retrieve search results for a given query with optional localization parameters.
+Retrieve search results for a given query with optional localization parameters. Results include realistic Google tracking parameters when accessed through the web interface.
 
 **Endpoint:** `GET /api/search`
 
@@ -343,6 +343,92 @@ curl -X POST "http://localhost:3000/api/ads/generate" \
 | `ads[].target_audience` | string | Target audience description |
 | `ads[].campaign_focus`  | string | Campaign focus keywords     |
 | `campaignNames`         | array  | Generated campaign names    |
+
+---
+
+## 🎯 Google Tracking Integration
+
+### Realistic URL Parameters
+
+When accessed through the web interface, this fake Google implementation includes authentic Google tracking parameters for enhanced martech demonstrations:
+
+#### Search Page URLs
+
+```
+/?q=mortgage%20rates&source=hp&ei=abc123-def456&uact=8&biw=1920&bih=1080&dpr=1&sa=X&ved=2ahUKEwi...&cid=1234567890.1234567890&gs_ssp=xyz123
+```
+
+#### Google ID System
+
+The platform generates realistic Google tracking IDs that match real Google services:
+
+**Analytics & Measurement IDs:**
+
+- **Google Analytics Client ID**: `1234567890.1234567890` (persistent visitor tracking)
+- **Google Analytics Property ID**: `G-XXXXXXXXXX` (GA4) or `UA-XXXXXXXX-X` (Universal Analytics)
+- **Google Session ID**: `timestamp.randomnumber` (session-based tracking)
+
+**Advertising IDs:**
+
+- **Google Ads Customer ID**: `123-456-7890` (account-level identifier)
+- **Google Conversion ID**: `AW-123456789/AbCdEfGhIj_12345` (conversion tracking)
+- **Google Click ID (gclid)**: `CjwKCAiA1eKBBhCuARIsAIeLs3MxE...` (click attribution)
+
+**Platform IDs:**
+
+- **Google Tag Manager ID**: `GTM-XXXXXXX` (container management)
+- **Google User ID**: `116825000000000000000` (signed-in user tracking)
+
+**Mobile Advertising IDs:**
+
+- **Google Advertising ID (GAID)**: `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx` (Android devices)
+- **Apple IDFA**: `XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX` (iOS devices)
+- **Mobile Ad Type**: Automatically detected based on user agent
+
+**Google Analytics Cookies:**
+
+- **`_ga`**: `GA1.2.906301740.1756182008` (primary tracking cookie, 2-year expiry)
+  - Format: `GA1.{domain-depth}.{client-id}.{first-visit-timestamp}`
+  - Purpose: Unique visitor identification across sessions
+- **`_gid`**: `GA1.2.123456789.1756182008` (session cookie, 24-hour expiry)
+  - Format: `GA1.{domain-depth}.{random-number}.{timestamp}`
+  - Purpose: Daily unique visitor identification
+- **`_gac_<property-id>`**: `1.1756182008.CjwKCAiA...` (consent cookie with gclid)
+  - Format: `1.{timestamp}.{gclid-value}`
+  - Purpose: Store Google Ads click attribution data
+- **`_ga_<property-id>`**: `GA1.2.906301740.1756182008` (GA4 property-specific)
+  - Format: `GA1.{domain-depth}.{session-id}.{session-number}.{engagement-time}.{timestamp}`
+  - Purpose: Enhanced measurement for GA4 properties
+- **`_gat`**: `1` (throttle cookie, 1-minute expiry)
+  - Purpose: Rate limiting Google Analytics requests
+
+#### Paid Ad Click URLs
+
+- **gclid**: Google Click ID (e.g., `CjwKCAiA1eKBBhCuARIsAIeLs3MxE...`)
+- **gbraid**: Google Broad Match Click ID (e.g., `0AH1Qm5vK3jL9M8N7P6`)
+- **wbraid**: Web-to-App Click ID (e.g., `1tP4Q2R8S6M9N3`)
+- **gclsrc**: Google Ads source (`aw.ds`)
+- **adpos**: Ad position (1, 2, 3)
+- **gaid**: Google Advertising ID (Android only, when detected)
+- **idfa**: Apple IDFA (iOS only, when detected)
+
+#### Organic Result URLs
+
+- **ved**: Google result tracking ID (e.g., `2ahUKEwjM5...`)
+- **uact**: User action code (8, 5, 3)
+- **source**: Traffic source (`web`)
+- **q**: Search query
+- **pos**: Result position
+
+#### Benefits for Martech Demos
+
+- **Realistic Attribution**: URLs match real Google Ads campaigns
+- **Analytics Integration**: Compatible with Google Analytics and conversion tracking
+- **Professional Presentation**: Demonstrates enterprise-level digital marketing knowledge
+- **UTM Enhancement**: Combines Google tracking with existing UTM parameters
+- **ID Persistence**: Client IDs persist across sessions like real Google Analytics
+- **Cross-Platform Tracking**: Supports web-to-app and broad match tracking
+- **Mobile Attribution**: GAID/IDFA support for mobile app advertising campaigns
 
 ---
 

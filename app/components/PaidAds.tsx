@@ -1,3 +1,5 @@
+import { addGoogleTrackingToAdUrl } from "@/app/utils/googleTracking"
+
 type PaidAd = {
   title: string
   display_url: string
@@ -13,16 +15,22 @@ interface PaidAdsProps {
 }
 
 export default function PaidAds({ ads, loading, currentQuery }: PaidAdsProps) {
-  const handleAdClick = (ad: PaidAd) => {
+  const handleAdClick = (ad: PaidAd, adIndex: number) => {
     // Emit custom event for UTM tracking
     const adClickEvent = new CustomEvent("adClick", {
       detail: {
         url: ad.url,
         keyword: currentQuery || "",
         adTitle: ad.title,
+        adIndex,
       },
     })
     window.dispatchEvent(adClickEvent)
+  }
+
+  const getAdUrl = (ad: PaidAd, adIndex: number): string => {
+    if (!currentQuery) return ad.url
+    return addGoogleTrackingToAdUrl(ad.url, currentQuery, adIndex)
   }
   if (loading) {
     return (
@@ -47,10 +55,10 @@ export default function PaidAds({ ads, loading, currentQuery }: PaidAdsProps) {
           </div>
           <div className="mb-1">
             <a
-              href={ad.url}
+              href={getAdUrl(ad, i)}
               target="_blank"
               rel="noopener"
-              onClick={() => handleAdClick(ad)}
+              onClick={() => handleAdClick(ad, i)}
               className="text-xl text-blue-700 hover:underline visited:text-purple-700 google-font">
               {ad.title}
             </a>

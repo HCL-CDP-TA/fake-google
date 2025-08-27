@@ -1,5 +1,6 @@
 import Image from "next/image"
 import { getFaviconUrl } from "../utils/favicon"
+import { addOrganicTrackingToUrl } from "../utils/googleTracking"
 
 type OrganicResult = {
   title: string
@@ -12,9 +13,32 @@ interface OrganicResultsProps {
   results: OrganicResult[]
   loading?: boolean
   hasSearched?: boolean
+  currentQuery?: string
 }
 
-export default function OrganicResults({ results, loading, hasSearched = false }: OrganicResultsProps) {
+export default function OrganicResults({
+  results,
+  loading,
+  hasSearched = false,
+  currentQuery = "",
+}: OrganicResultsProps) {
+  const getResultUrl = (result: OrganicResult, index: number): string => {
+    if (!currentQuery) return result.url
+    return addOrganicTrackingToUrl(result.url, currentQuery, index)
+  }
+
+  const handleResultClick = (result: OrganicResult, index: number) => {
+    // Emit custom event for organic result tracking
+    const resultClickEvent = new CustomEvent("organicClick", {
+      detail: {
+        url: result.url,
+        query: currentQuery,
+        title: result.title,
+        position: index + 1,
+      },
+    })
+    window.dispatchEvent(resultClickEvent)
+  }
   if (loading) {
     return <div className="text-gray-500 text-center py-8 google-font">Loading results...</div>
   }
@@ -62,9 +86,10 @@ export default function OrganicResults({ results, loading, hasSearched = false }
               />
             )}
             <a
-              href={result.url}
+              href={getResultUrl(result, i)}
               target="_blank"
               rel="noopener"
+              onClick={() => handleResultClick(result, i)}
               className="text-xl text-blue-700 hover:underline visited:text-purple-700 google-font">
               {result.title}
             </a>

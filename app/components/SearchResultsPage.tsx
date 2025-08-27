@@ -177,6 +177,7 @@ export default function SearchResultsPage({
             results={organicResults}
             loading={loading && organicResults.length === 0}
             hasSearched={!!search}
+            currentQuery={query}
           />
         </div>
       </main>

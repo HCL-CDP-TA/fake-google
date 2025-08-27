@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react"
+import { updatePageUrlWithGoogleParams } from "@/app/utils/googleTracking"
 
 type PaidAd = {
   title: string
@@ -29,13 +30,15 @@ export function useSearch() {
   // Update URL when search changes
   const updateURL = (searchQuery: string) => {
     if (typeof window !== "undefined") {
-      const url = new URL(window.location.href)
       if (searchQuery) {
-        url.searchParams.set("q", searchQuery)
+        // Use realistic Google search parameters
+        updatePageUrlWithGoogleParams(searchQuery)
       } else {
-        url.searchParams.delete("q")
+        // Clear all parameters when going to homepage
+        const url = new URL(window.location.href)
+        url.search = ""
+        window.history.pushState({}, "", url.toString())
       }
-      window.history.pushState({}, "", url.toString())
     }
   }
 

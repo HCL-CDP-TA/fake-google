@@ -863,6 +863,12 @@ Return ONLY a valid JSON array with exactly {numAds} ads and no additional text 
                                 <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800 google-font">
                                   {keywordAds.length} ad{keywordAds.length !== 1 ? "s" : ""}
                                 </span>
+                                <Link
+                                  href={`/?q=${encodeURIComponent(keywordName)}`}
+                                  className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800 hover:bg-green-200 transition-colors google-font"
+                                  onClick={e => e.stopPropagation()}>
+                                  View Search
+                                </Link>
                               </div>
                             </div>
                           </AccordionTrigger>
