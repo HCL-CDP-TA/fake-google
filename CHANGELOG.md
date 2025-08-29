@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.3.0](https://github.com/HCL-CDP-TA/fake-google/compare/v1.2.5...v1.3.0) (2025-08-29)
+
+
+### Features
+
+* added version number ([e5e493f](https://github.com/HCL-CDP-TA/fake-google/commit/e5e493f79dfa73d41ea5ab9f4b02f0aa313f2dac))
+* Google Analytics ([bf7e1ab](https://github.com/HCL-CDP-TA/fake-google/commit/bf7e1abdda6b4d07b8bd918454ca1397b1029322))
+
 ## [1.2.5](https://github.com/HCL-CDP-TA/fake-google/compare/v1.2.4...v1.2.5) (2025-08-29)
 
 
