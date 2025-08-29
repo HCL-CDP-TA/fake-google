@@ -45,7 +45,7 @@ show_help() {
     echo ""
     echo "Deployment Options:"
     echo "  -v, --version TAG       Deploy specific release version/tag (required)"
-    echo "  -f, --force             Force deployment (stop running containers, overwrite existing)"
+    echo "  -f, --force             Force deployment (stop ALL containers, overwrite existing)"
     echo "  --no-backup             Skip backup of current deployment"
     echo "  --dry-run               Show what would be done without executing"
     echo "  --current-dir           Use current directory for development deployment"
@@ -62,7 +62,7 @@ show_help() {
     echo ""
     echo "Examples:"
     echo "  $0 -v v1.0.0 --init-db           # First deployment with database setup"
-    echo "  $0 -v v1.2.3                    # Deploy release v1.2.3 to /data/custom/fake-google"
+    echo "  $0 -v v1.2.3                    # Deploy release v1.2.3 (stops app, keeps DB running)"
     echo "  $0 -v v2.0.0                    # Deploy release v2.0.0"
     echo "  $0 -v v1.2.3 --local           # Deploy current local state as v1.2.3 (testing)"
     echo "  $0 -v v1.2.3 --current-dir     # Deploy to current directory structure"
@@ -179,26 +179,59 @@ log_step() {
 check_running_containers() {
     log_step "Checking for running containers..."
     
-    local running_containers=$(docker ps --format "{{.Names}}" | grep -E "fake-google" || true)
+    local app_containers=$(docker ps --format "{{.Names}}" | grep -E "fake-google-app" || true)
+    local db_containers=$(docker ps --format "{{.Names}}" | grep -E "fake-google-db" || true)
+    local other_containers=$(docker ps --format "{{.Names}}" | grep -E "fake-google" | grep -v -E "(fake-google-app|fake-google-db)" || true)
     
-    if [ -n "$running_containers" ]; then
-        log_warning "Found running fake-google containers:"
-        echo "$running_containers" | sed 's/^/  • /'
+    # Always stop app containers during deployment (they need to be updated)
+    if [ -n "$app_containers" ]; then
+        log_info "Stopping app containers (required for deployment):"
+        echo "$app_containers" | sed 's/^/  • /'
+        if [ "$DRY_RUN" = false ]; then
+            echo "$app_containers" | xargs docker stop 2>/dev/null || true
+            echo "$app_containers" | xargs docker rm 2>/dev/null || true
+        fi
+    fi
+    
+    # Handle database containers
+    if [ -n "$db_containers" ]; then
+        log_warning "Found running database containers:"
+        echo "$db_containers" | sed 's/^/  • /'
+        
+        if [ "$FORCE_DEPLOY" = true ]; then
+            log_info "Force deploy enabled, will stop database containers"
+            if [ "$DRY_RUN" = false ]; then
+                echo "$db_containers" | xargs docker stop 2>/dev/null || true
+                echo "$db_containers" | xargs docker rm 2>/dev/null || true
+            fi
+        else
+            log_info "Database containers will continue running (use --force to restart them)"
+        fi
+    fi
+    
+    # Handle other containers
+    if [ -n "$other_containers" ]; then
+        log_warning "Found other fake-google containers:"
+        echo "$other_containers" | sed 's/^/  • /'
         
         if [ "$FORCE_DEPLOY" = true ]; then
             log_info "Force deploy enabled, will stop these containers"
+            if [ "$DRY_RUN" = false ]; then
+                echo "$other_containers" | xargs docker stop 2>/dev/null || true
+                echo "$other_containers" | xargs docker rm 2>/dev/null || true
+            fi
         else
             echo ""
-            log_error "Containers are already running. Use one of these options:"
-            echo "  1. Stop containers first: docker stop \$(docker ps --format "{{.Names}}" | grep fake-google)"
-            echo "  2. Use --force flag to automatically stop containers"
+            log_error "Other containers are running. Use one of these options:"
+            echo "  1. Stop containers first: docker stop \$(docker ps --format \"{{.Names}}\" | grep fake-google)"
+            echo "  2. Use --force flag to automatically stop all containers"
             echo "  3. Use deploy.sh --stop to stop via compose"
             echo ""
             exit 1
         fi
-    else
-        log_success "No conflicting containers found"
     fi
+    
+    log_success "Container check completed"
 }
 
 # Check for port conflicts
@@ -667,6 +700,16 @@ check_database() {
         cd "$CURRENT_LINK"
         if ! $DOCKER_COMPOSE_CMD ps postgres | grep -q "Up"; then
             log_info "Starting database container..."
+            
+            # Remove any existing stopped containers with the same name
+            if [ "$DRY_RUN" = false ]; then
+                # Check for existing containers (running or stopped)
+                if docker ps -a --format "{{.Names}}" | grep -q "fake-google-db"; then
+                    log_info "Removing existing fake-google-db container..."
+                    docker rm -f fake-google-db 2>/dev/null || true
+                fi
+            fi
+            
             execute_or_simulate "$DOCKER_COMPOSE_CMD up -d postgres"
             
             # Wait for database to be ready
@@ -725,6 +768,13 @@ initialize_database() {
     
     # Start database container
     log_info "Starting database container..."
+    
+    # Remove any existing stopped containers with the same name
+    if docker ps -a --format "{{.Names}}" | grep -q "fake-google-db"; then
+        log_info "Removing existing fake-google-db container..."
+        docker rm -f fake-google-db 2>/dev/null || true
+    fi
+    
     $DOCKER_COMPOSE_CMD up -d postgres
     
     # Wait for database to be ready
@@ -824,25 +874,39 @@ switch_version() {
     
     log_step "Switching to version $version..."
     
-    # Stop ALL fake-google containers (more aggressive approach)
-    log_info "Stopping any running fake-google containers..."
+    # Stop app containers (always required for deployment)
+    log_info "Stopping app containers for version switch..."
     if [ "$DRY_RUN" = false ]; then
-        # Stop containers by name pattern
-        if docker ps --format "table {{.Names}}" | grep -E "fake-google" >/dev/null 2>&1; then
-            log_info "Found running fake-google containers, stopping them..."
-            docker stop $(docker ps --format "{{.Names}}" | grep -E "fake-google") 2>/dev/null || true
-            docker rm $(docker ps -a --format "{{.Names}}" | grep -E "fake-google") 2>/dev/null || true
+        # Stop app containers specifically
+        if docker ps --format "table {{.Names}}" | grep -E "fake-google-app" >/dev/null 2>&1; then
+            docker stop $(docker ps --format "{{.Names}}" | grep -E "fake-google-app") 2>/dev/null || true
+            docker rm $(docker ps -a --format "{{.Names}}" | grep -E "fake-google-app") 2>/dev/null || true
+        fi
+        
+        # If force deploy, stop all containers
+        if [ "$FORCE_DEPLOY" = true ]; then
+            log_info "Force mode: stopping all fake-google containers..."
+            if docker ps --format "table {{.Names}}" | grep -E "fake-google" >/dev/null 2>&1; then
+                docker stop $(docker ps --format "{{.Names}}" | grep -E "fake-google") 2>/dev/null || true
+                docker rm $(docker ps -a --format "{{.Names}}" | grep -E "fake-google") 2>/dev/null || true
+            fi
         fi
         
         # Also try stopping from current deployment directory
         if [ -L "$CURRENT_LINK" ]; then
             cd "$CURRENT_LINK"
-            $DOCKER_COMPOSE_CMD down --remove-orphans || true
+            if [ "$FORCE_DEPLOY" = true ]; then
+                $DOCKER_COMPOSE_CMD down --remove-orphans || true
+            else
+                # Only stop app service, keep database running if possible
+                $DOCKER_COMPOSE_CMD stop app || true
+                $DOCKER_COMPOSE_CMD rm -f app || true
+            fi
             cd - >/dev/null
         fi
         
         # Wait for containers to fully stop
-        sleep 5
+        sleep 3
     fi
     
     # Update symlink

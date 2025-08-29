@@ -105,20 +105,34 @@ NODE_ENV=production
 
 ### Container Already Running Error
 
-If deployment fails with container conflicts:
+The deployment script intelligently handles running containers:
+
+**Default Behavior:**
+
+- ✅ **App containers** are automatically stopped (required for deployment)
+- ⚠️ **Database containers** continue running (preserves data and connections)
+- ❌ **Other containers** cause deployment to fail (manual intervention needed)
+
+```bash
+# Normal deployment (stops app, keeps database running)
+./production-deploy.sh -v v1.2.3
+
+# Force deployment (stops ALL containers)
+./production-deploy.sh -v v1.2.3 --force
+```
+
+**Manual Container Management:**
 
 ```bash
 # Check running containers
 docker ps | grep fake-google
 
-# Option 1: Force deployment (stops containers automatically)
-./production-deploy.sh -v v1.2.3 --force
+# Stop specific containers
+docker stop fake-google-app                    # Stop app only
+docker stop fake-google-db                     # Stop database only
+docker stop $(docker ps --format "{{.Names}}" | grep fake-google)  # Stop all
 
-# Option 2: Manual cleanup
-docker stop $(docker ps --format "{{.Names}}" | grep fake-google)
-docker rm $(docker ps -a --format "{{.Names}}" | grep fake-google)
-
-# Option 3: Use regular deploy script to stop
+# Use regular deploy script to stop everything
 ./deploy.sh --stop
 ```
 
@@ -138,6 +152,26 @@ echo "DB_PORT=5450" >> /data/custom/fake-google/shared/.env
 # Option 2: Force deployment (attempts to resolve automatically)
 ./production-deploy.sh -v v1.2.3 --force
 ```
+
+### Container Name Conflicts
+
+If you get "container name already in use" errors:
+
+```bash
+# Error: The container name "/fake-google-db" is already in use
+# Solution: Remove existing containers
+
+# Remove specific containers
+docker rm -f fake-google-app fake-google-db
+
+# Remove all fake-google containers (stopped and running)
+docker rm -f $(docker ps -aq --filter "name=fake-google")
+
+# Then retry deployment
+./production-deploy.sh -v v1.2.3
+```
+
+**Note:** The deployment script now automatically handles this cleanup, but manual cleanup may be needed for containers created outside the deployment process.
 
 ### Check deployment status
 
