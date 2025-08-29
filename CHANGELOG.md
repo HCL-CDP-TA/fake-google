@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.2.0](https://github.com/HCL-CDP-TA/fake-google/compare/v1.1.0...v1.2.0) (2025-08-29)
+
+
+### Features
+
+* Many features, including additional tracking and links from terms ([032fe99](https://github.com/HCL-CDP-TA/fake-google/commit/032fe99bd76aeace6e2e146ca32440e7f6805b4e))
+* tracking improvements & usability improvements ([6f0e181](https://github.com/HCL-CDP-TA/fake-google/commit/6f0e181c68d48685809fca17c0901fe734673cd4))
+
+
+### Bug Fixes
+
+* deploy fixes ([623abbc](https://github.com/HCL-CDP-TA/fake-google/commit/623abbc7eb020a68daae433216aaa77e6c824969))
+
 ## [1.1.0](https://github.com/HCL-CDP-TA/fake-google/compare/v1.0.3...v1.1.0) (2025-08-18)
 
 
