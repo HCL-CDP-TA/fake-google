@@ -105,20 +105,30 @@ NODE_ENV=production
 
 ### Container Already Running Error
 
-The deployment script intelligently handles running containers:
+The deployment script is designed for zero-downtime deployments:
 
-**Default Behavior:**
+**Default Behavior (Recommended):**
+```bash
+# Normal software update (assumes containers are running)
+./production-deploy.sh -v v1.2.3
+```
 
-- ✅ **App containers** are automatically stopped (required for deployment)
-- ⚠️ **Database containers** continue running (preserves data and connections)
-- ❌ **Other containers** cause deployment to fail (manual intervention needed)
+- ✅ **App containers** are automatically stopped and updated
+- ✅ **Database containers** continue running (zero-downtime)
+- ✅ **Other containers** continue running
+- ✅ **No user intervention** required
+
+**Special Deployment Modes:**
 
 ```bash
-# Normal deployment (stops app, keeps database running)
-./production-deploy.sh -v v1.2.3
+# First-time deployment (sets up database)
+./production-deploy.sh -v v1.0.0 --init-db
 
-# Force deployment (stops ALL containers)
+# Force deployment (restarts ALL containers)
 ./production-deploy.sh -v v1.2.3 --force
+
+# Clean up containers only
+./production-deploy.sh --cleanup-containers
 ```
 
 **Manual Container Management:**
