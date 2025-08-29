@@ -1,5 +1,50 @@
 // Google tracking parameter generators for realistic fake Google experience
 
+// An example:
+
+//utm_content=
+// &utm_term=g
+// &wickedsource=google
+// &wickedid=CjwKCAjwtrXFBhBiEiwAEKen1yo_F_35iMjWsdbPtAfUlOC-jRdmFYxn4ph2BSQ6LjG5w4hrIUvK-BoC-h0QAvD_BwE
+// &wickedid=699065154432
+// &wcid=14926960932
+// &wv=4
+// &cm_source=google
+// &cm_id=699065154432
+// &cm_campaignid=14926960932
+// &cm_placement=g
+// &tw_source=google
+// &tw_adid=699065154432
+// &tw_campaign=14926960932
+// &gad_source=1
+// &gad_campaignid=14926960932
+// &gclid=CjwKCAjwtrXFBhBiEiwAEKen1yo_F_35iMjWsdbPtAfUlOC-jRdmFYxn4ph2BSQ6LjG5w4hrIUvK-BoC-h0QAvD_BwE
+
+// &gad_source=1
+// &gad_campaignid=20734981593
+// &gbraid=0AAAAAqU4AaRUFatl94AzBM3nDHWWKNwa8
+// &gclid=CjwKCAjwtrXFBhBiEiwAEKen12s_6DU7985biHjcr7NY7qv1uLWmhRZjKZrxbPpT1BXzQ3cx8VKxeBoCh8oQAvD_BwE
+
+// utm_source=google
+// &utm_medium=cpc
+// &utm_campaign=len-hom-home-loan-exact
+// &utm_content=hl-generic
+// &gad_source=1
+// &gad_campaignid=17603109247
+// &gbraid=0AAAAAouFlUmRkCDc5KBZ-wQnuWMF4CYEo
+// &gclid=CjwKCAjwtrXFBhBiEiwAEKen1048UfRESYW5ju6aztwf1_rG0U-BsjUW8f95l5c1i_dQcQoaRJyp2RoC2-oQAvD_BwE
+
+// https://banking.demo.now.hclsoftware.cloud/en-US/unibank/home-loans?
+// utm_content=Big%20Dream%20Mortgage%20Calculator
+// &utm_term=best%20mortgage%20rates
+// &utm_source=google
+// &utm_medium=paid_search
+// &utm_campaign=Big%20Dream
+// &gclid=CjwKEAjwksmLfSPjjiZXD1QUw6rZrHvAseDchiNb9a88psP63xzKxQWiBUbi83QNUX0DSIEWkVSI_9Jq5X8s1ljWMOl1v
+// &gclsrc=aw.ds
+// &adpos=1
+
+
 /**
  * Generate a realistic Google Click ID (gclid)
  * Format: CjwKCAiA... (typically 90-100 characters)

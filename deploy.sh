@@ -51,6 +51,7 @@ BUILD_ONLY=false
 CLEAN_BUILD=false
 LOGS=false
 STOP_ONLY=false
+UPDATE_CODE=false
 
 # Help function
 show_help() {
@@ -66,11 +67,13 @@ show_help() {
     echo "  -c, --clean             Clean build (no cache)"
     echo "  -l, --logs              Show logs after starting"
     echo "  -s, --stop              Stop containers only"
+    echo "  -u, --update            Pull latest code from git before deploying"
     echo ""
     echo "Quick Start:"
     echo "  ./deploy.sh                       # Production deployment"
     echo "  ./deploy.sh --dev                 # Development with hot reload"
     echo "  ./deploy.sh --clean               # Clean production build"
+    echo "  ./deploy.sh --update              # Pull latest code and deploy"
     echo ""
     echo "Management:"
     echo "  ./deploy.sh --stop                # Stop all containers"
@@ -111,6 +114,10 @@ while [[ $# -gt 0 ]]; do
             STOP_ONLY=true
             shift
             ;;
+        -u|--update)
+            UPDATE_CODE=true
+            shift
+            ;;
         *)
             echo -e "${RED}Unknown option: $1${NC}"
             show_help
@@ -128,6 +135,47 @@ else
 fi
 
 echo "========================================"
+
+# Function to update code from git
+update_code() {
+    if [ "$UPDATE_CODE" = true ]; then
+        echo -e "${YELLOW}📥 Updating code from git...${NC}"
+        
+        # Check if we're in a git repository
+        if ! git rev-parse --git-dir >/dev/null 2>&1; then
+            echo -e "${RED}❌ Not in a git repository${NC}"
+            echo "Please run this script from the git repository root"
+            exit 1
+        fi
+        
+        # Check for uncommitted changes
+        if ! git diff-index --quiet HEAD --; then
+            echo -e "${YELLOW}⚠️  Warning: You have uncommitted changes${NC}"
+            echo "Stashing changes before pulling..."
+            git stash push -m "Auto-stash before deployment $(date)"
+        fi
+        
+        # Get current branch
+        CURRENT_BRANCH=$(git branch --show-current)
+        echo "Current branch: $CURRENT_BRANCH"
+        
+        # Pull latest changes
+        echo "Pulling latest changes..."
+        if git pull origin "$CURRENT_BRANCH"; then
+            echo -e "${GREEN}✅ Code updated successfully${NC}"
+        else
+            echo -e "${RED}❌ Failed to pull latest changes${NC}"
+            echo "Please resolve git issues manually"
+            exit 1
+        fi
+        
+        # Force clean build when updating code
+        CLEAN_BUILD=true
+        echo -e "${BLUE}🔄 Forcing clean build after code update${NC}"
+        
+        echo ""
+    fi
+}
 
 # Function to stop containers
 stop_containers() {
@@ -276,6 +324,9 @@ main() {
         stop_containers
         return
     fi
+    
+    # Update code from git if requested
+    update_code
     
     stop_containers
     cleanup
