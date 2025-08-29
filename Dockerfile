@@ -23,6 +23,10 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
+# Build-time environment variables for Next.js
+ARG NEXT_PUBLIC_GA_TRACKING_ID
+ENV NEXT_PUBLIC_GA_TRACKING_ID=$NEXT_PUBLIC_GA_TRACKING_ID
+
 # Build the application
 RUN npm run build
 

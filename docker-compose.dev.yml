@@ -32,6 +32,8 @@ services:
       context: .
       dockerfile: Dockerfile
       target: builder
+      args:
+        NEXT_PUBLIC_GA_TRACKING_ID: ${NEXT_PUBLIC_GA_TRACKING_ID:-}
     container_name: fake-google-app-dev
     environment:
       NODE_ENV: development
@@ -39,6 +41,7 @@ services:
       GOOGLE_SEARCH_API_KEY: ${GOOGLE_SEARCH_API_KEY:-}
       GOOGLE_SEARCH_ENGINE_ID: ${GOOGLE_SEARCH_ENGINE_ID:-}
       GOOGLE_GEMINI_API_KEY: ${GOOGLE_GEMINI_API_KEY:-}
+      NEXT_PUBLIC_GA_TRACKING_ID: ${NEXT_PUBLIC_GA_TRACKING_ID:-}
       PORT: 3000
     ports:
       - "${DEV_APP_PORT:-3002}:3000" # Default to 3002 for dev to avoid conflicts
