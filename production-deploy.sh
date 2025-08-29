@@ -38,54 +38,50 @@ INIT_DATABASE=false
 
 # Help function
 show_help() {
-    echo "Fake Google - Production Deployment"
-    echo "===================================="
-    echo ""
-    echo "Usage: $0 [options]"
-    echo ""
-    echo "Deployment Options:"
-    echo "  -v, --version TAG       Deploy specific release version/tag (required)"
-    echo "  -f, --force             Force deployment (restart ALL containers, not just app)"
-    echo "  --no-backup             Skip backup of current deployment"
-    echo "  --dry-run               Show what would be done without executing"
-    echo "  --current-dir           Use current directory for development deployment"
-    echo "  --local                 Deploy from local repository (no GitHub)"
-    echo "  --base-dir PATH         Custom base directory (default: /data/custom/fake-google)"
-    echo ""
-    echo "Management Options:"
-    echo "  -r, --rollback TAG      Rollback to specific release version"
-    echo "  -l, --list              List available deployed versions"
-    echo "  -s, --status            Show current deployment status"
-    echo "  -c, --cleanup           Remove old deployments (keeps last 5)"
-    echo "  --cleanup-containers    Remove all fake-google containers"
-    echo "  --init-db               Initialize database on first deployment"
-    echo "  -h, --help              Show this help message"
-    echo ""
-    echo "Examples:"
-    echo "  $0 -v v1.0.0 --init-db           # First deployment with database setup"
-    echo "  $0 -v v1.2.3                    # Normal deployment (updates app, keeps DB running)"
-    echo "  $0 -v v2.0.0                    # Deploy new version (zero-downtime)"
-    echo "  $0 -v v1.2.3 --force            # Force redeploy (restart all containers)"
-    echo "  $0 -v v1.2.3 --local           # Deploy current local state as v1.2.3 (testing)"
-    echo "  $0 -v v1.2.3 --current-dir     # Deploy to current directory structure"
-    echo "  $0 -r v1.2.2                    # Rollback to release v1.2.2"
-    echo "  $0 --list                       # List deployed versions"
-    echo "  $0 --cleanup                    # Remove old deployments"
-    echo ""
-    echo "Directory Structure:"
-    echo "  /data/custom/fake-google/"
-    echo "  ├── releases/           # All deployed versions"
-    echo "  │   ├── v1.2.3/"
-    echo "  │   └── v1.2.4/"
-    echo "  ├── current -> releases/v1.2.4  # Symlink to active version"
-    echo "  ├── shared/             # Shared files (.env, uploads, etc.)"
-    echo "  └── backups/            # Database/config backups"
-    echo ""
-    echo "Prerequisites:"
-    echo "  • Docker and Docker Compose installed"
-    echo "  • Git installed"
-    echo "  • Sufficient disk space for multiple versions"
-    echo "  • Run as user with permission to /data/custom/fake-google"
+    cat << EOF
+Fake Google Production Deployment Script
+
+USAGE:
+    $0 [OPTIONS] -v VERSION
+
+REQUIRED:
+    -v, --version VERSION    Git tag version to deploy (e.g., v1.2.3)
+
+OPTIONS:
+    -f, --force              Force deployment (removes all containers including database)
+    -i, --init-database      Initialize database (use for first deployment or data reset)
+    -n, --dry-run            Show what would be done without executing
+    --no-backup             Skip backing up current deployment
+    -h, --help              Show this help message
+
+DATABASE SAFETY:
+    By default, this script preserves existing database containers and data.
+    - Normal deployments: Only application containers are replaced
+    - First deployment: Database initialized only if no volume exists
+    - Force mode (--force): ALL containers removed (DATA LOSS RISK!)
+    - Init mode (--init-database): Database reinitialized (DATA LOSS RISK!)
+
+EXAMPLES:
+    # Normal deployment (preserves database)
+    $0 -v v1.2.3
+    
+    # First deployment with database setup
+    $0 -v v1.0.0 --init-database
+    
+    # Force complete rebuild (destroys data!)
+    $0 -v v1.2.3 --force
+    
+    # Dry run to see what would happen
+    $0 -v v1.2.3 --dry-run
+
+DEPLOYMENT STRUCTURE:
+    /data/custom/fake-google/
+    ├── releases/v1.2.3/          # Versioned deployments
+    ├── shared/                   # Shared configuration (.env)
+    ├── backups/                  # Database and deployment backups
+    └── current -> releases/v1.2.3  # Symlink to active version
+
+EOF
 }
 
 # Parse command line arguments
@@ -258,34 +254,46 @@ check_running_containers() {
     log_success "Container check completed"
 }
 
-# Clean up conflicting Docker containers
+# Clean up conflicting Docker containers (PRESERVES DATABASE DATA)
 cleanup_conflicting_containers() {
     log_step "Cleaning up conflicting containers..."
     
-    # Stop and remove all fake-google containers (running and stopped)
-    local all_containers=$(docker ps -aq --filter "name=fake-google" 2>/dev/null || true)
+    # Only remove application containers, preserve database containers to protect data
+    local app_containers=$(docker ps -aq --filter "name=fake-google-app" 2>/dev/null || true)
     
-    if [ -n "$all_containers" ]; then
-        log_info "Found existing fake-google containers, removing them..."
-        echo "$all_containers" | while read container_id; do
+    if [ -n "$app_containers" ]; then
+        log_info "Found existing application containers, removing them..."
+        echo "$app_containers" | while read container_id; do
             if [ -n "$container_id" ]; then
                 local container_name=$(docker inspect --format='{{.Name}}' "$container_id" 2>/dev/null | sed 's|^/||' || echo "unknown")
-                log_info "Removing container: $container_name ($container_id)"
+                log_info "Removing app container: $container_name ($container_id)"
                 docker stop "$container_id" 2>/dev/null || true
                 docker rm -f "$container_id" 2>/dev/null || true
             fi
         done
-        
-        # Additional cleanup by name pattern
-        docker ps -aq --filter "name=fake-google-app" | xargs -r docker rm -f 2>/dev/null || true
-        docker ps -aq --filter "name=fake-google-db" | xargs -r docker rm -f 2>/dev/null || true
-        
-        # Give Docker time to fully clean up
-        sleep 5
-        log_success "Container cleanup completed"
-    else
-        log_success "No conflicting containers found"
     fi
+    
+    # WARNING: Only remove database containers if explicitly forced
+    local db_containers=$(docker ps -aq --filter "name=fake-google-db" 2>/dev/null || true)
+    if [ -n "$db_containers" ]; then
+        if [ "$FORCE_DEPLOY" = true ] || [ "$INIT_DATABASE" = true ]; then
+            log_warning "FORCE/INIT mode: Removing database containers (this may affect data!)"
+            echo "$db_containers" | while read container_id; do
+                if [ -n "$container_id" ]; then
+                    local container_name=$(docker inspect --format='{{.Name}}' "$container_id" 2>/dev/null | sed 's|^/||' || echo "unknown")
+                    log_warning "Removing DB container: $container_name ($container_id)"
+                    docker stop "$container_id" 2>/dev/null || true
+                    docker rm -f "$container_id" 2>/dev/null || true
+                fi
+            done
+        else
+            log_info "Database containers found but preserved (use --force to remove)"
+        fi
+    fi
+    
+    # Give Docker time to fully clean up
+    sleep 3
+    log_success "Container cleanup completed"
     
     # Also clean up any orphaned networks
     local networks=$(docker network ls --filter "name=fake-google" -q 2>/dev/null || true)
@@ -779,17 +787,8 @@ check_database() {
         if ! $DOCKER_COMPOSE_CMD ps postgres | grep -q "Up"; then
             log_info "Starting database container..."
             
-            # Remove any existing containers with the same name (always do this, even in dry-run)
-            # Check for existing containers (running or stopped)
-            if docker ps -a --format "{{.Names}}" | grep -q "fake-google-db"; then
-                log_info "Removing existing fake-google-db container..."
-                docker rm -f fake-google-db 2>/dev/null || true
-                sleep 2  # Give Docker time to clean up
-            fi
-            
-            # Also try removing via compose to ensure clean state
-            $DOCKER_COMPOSE_CMD rm -f postgres 2>/dev/null || true
-            
+            # Only start database, don't remove existing containers unless necessary
+            # This preserves data in persistent volumes
             execute_or_simulate "$DOCKER_COMPOSE_CMD up -d postgres"
             
             # Wait for database to be ready
@@ -830,9 +829,9 @@ check_database() {
     return 0
 }
 
-# Initialize database
+# Initialize database (ONLY for first-time setup)
 initialize_database() {
-    log_step "Initializing database..."
+    log_step "Initializing database (first-time setup)..."
     
     if [ "$DRY_RUN" = true ]; then
         log_info "DRY RUN: Would initialize database"
@@ -846,20 +845,33 @@ initialize_database() {
     
     cd "$CURRENT_LINK"
     
-    # Start database container
-    log_info "Starting database container..."
-    
-    # Remove any existing containers with the same name
-    if docker ps -a --format "{{.Names}}" | grep -q "fake-google-db"; then
-        log_info "Removing existing fake-google-db container..."
-        docker rm -f fake-google-db 2>/dev/null || true
-        sleep 2  # Give Docker time to clean up
+    # Check if database already exists with data
+    if $DOCKER_COMPOSE_CMD ps postgres | grep -q "Up"; then
+        if $DOCKER_COMPOSE_CMD exec -T postgres psql -U postgres -lqt | cut -d \| -f 1 | grep -qw fakegoogle; then
+            # Database exists - check if it has tables
+            local table_count=$($DOCKER_COMPOSE_CMD exec -T postgres psql -U postgres -d fakegoogle -c "\dt" 2>/dev/null | grep -c "table" || echo "0")
+            if [ "$table_count" -gt 0 ]; then
+                log_success "Database already exists with tables - skipping initialization"
+                cd - >/dev/null
+                return 0
+            fi
+        fi
     fi
     
-    # Also try removing via compose to ensure clean state
-    $DOCKER_COMPOSE_CMD rm -f postgres 2>/dev/null || true
-    
-    $DOCKER_COMPOSE_CMD up -d postgres
+    # Start database container only if not running
+    if ! $DOCKER_COMPOSE_CMD ps postgres | grep -q "Up"; then
+        log_info "Starting database container..."
+        
+        # IMPORTANT: Only remove containers if we're certain this is first setup
+        # and no data should exist yet
+        local has_existing_volume=$(docker volume ls | grep -c "postgres_data" || echo "0")
+        if [ "$has_existing_volume" -gt 0 ]; then
+            log_warning "PostgreSQL volume already exists - this may contain data!"
+            log_warning "Proceeding with caution to preserve existing data..."
+        fi
+        
+        $DOCKER_COMPOSE_CMD up -d postgres
+    fi
     
     # Wait for database to be ready
     log_info "Waiting for database to be ready..."
@@ -878,10 +890,10 @@ initialize_database() {
         return 1
     fi
     
-    # Create database if it doesn't exist
-    log_info "Creating database 'fakegoogle'..."
+    # Create database if it doesn't exist (safe operation)
+    log_info "Creating database 'fakegoogle' if it doesn't exist..."
     $DOCKER_COMPOSE_CMD exec -T postgres psql -U postgres -c "CREATE DATABASE fakegoogle;" 2>/dev/null || {
-        log_info "Database 'fakegoogle' already exists or creation failed"
+        log_info "Database 'fakegoogle' already exists - this is normal"
     }
     
     # Run database migrations/setup if available
@@ -1109,10 +1121,17 @@ deploy() {
         log_info "This appears to be the first deployment"
     fi
     
-    # For first deployment, automatically initialize database unless explicitly disabled
-    if [ "$is_first_deployment" = true ] && [ "$INIT_DATABASE" != false ]; then
-        INIT_DATABASE=true
-        log_info "First deployment detected - database initialization enabled"
+    # For first deployment, only initialize database if no existing volume exists
+    if [ "$is_first_deployment" = true ]; then
+        local has_existing_volume=$(docker volume ls | grep -c "postgres_data" || echo "0")
+        if [ "$has_existing_volume" -eq 0 ]; then
+            INIT_DATABASE=true
+            log_info "First deployment with no existing database volume - database initialization enabled"
+        else
+            log_warning "First deployment but database volume exists - skipping automatic initialization"
+            log_warning "Use --init-database flag if you want to force database initialization"
+            INIT_DATABASE=false
+        fi
     fi
     
     backup_current
@@ -1126,14 +1145,18 @@ deploy() {
     
     # Handle database initialization or checking
     if [ "$INIT_DATABASE" = true ]; then
-        # Clean up any conflicting containers before switching (init mode)
-        cleanup_conflicting_containers
         # For initialization, we need to switch to the new version first
         switch_version "$version"
         initialize_database
     else
-        # For normal deployments, skip database connectivity check (assume it's running)
-        # This allows for zero-downtime deployments where DB stays running
+        # For normal deployments, check database connectivity before switching
+        # This ensures the database is ready but doesn't modify existing data
+        if [ -L "$CURRENT_LINK" ]; then
+            if ! check_database; then
+                log_warning "Database check failed - you may need to run with --init-database"
+                log_warning "Continuing deployment anyway..."
+            fi
+        fi
         switch_version "$version"
     fi
     
