@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.1](https://github.com/HCL-CDP-TA/fake-google/compare/v1.3.0...v1.3.1) (2025-08-29)
+
+
+### Bug Fixes
+
+* less agressive database container management in deploy ([aa5ef05](https://github.com/HCL-CDP-TA/fake-google/commit/aa5ef055ad8dee1f0266c7a8325ce4ba1722b27e))
+
 ## [1.3.0](https://github.com/HCL-CDP-TA/fake-google/compare/v1.2.5...v1.3.0) (2025-08-29)
 
 
