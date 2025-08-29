@@ -45,7 +45,7 @@ show_help() {
     echo ""
     echo "Deployment Options:"
     echo "  -v, --version TAG       Deploy specific release version/tag (required)"
-    echo "  -f, --force             Force deployment even if version exists"
+    echo "  -f, --force             Force deployment (stop running containers, overwrite existing)"
     echo "  --no-backup             Skip backup of current deployment"
     echo "  --dry-run               Show what would be done without executing"
     echo "  --current-dir           Use current directory for development deployment"
@@ -66,7 +66,7 @@ show_help() {
     echo "  $0 -v v2.0.0                    # Deploy release v2.0.0"
     echo "  $0 -v v1.2.3 --local           # Deploy current local state as v1.2.3 (testing)"
     echo "  $0 -v v1.2.3 --current-dir     # Deploy to current directory structure"
-    echo "  $0 -v v1.2.3 --force            # Force redeploy even if exists"
+    echo "  $0 -v v1.2.3 --force            # Force redeploy (stop containers, overwrite existing)"
     echo "  $0 -r v1.2.2                    # Rollback to release v1.2.2"
     echo "  $0 --list                       # List deployed versions"
     echo "  $0 --cleanup                    # Remove old deployments"
@@ -174,6 +174,84 @@ log_error() {
 log_step() {
     echo -e "${PURPLE}🔄 $1${NC}"
 }
+
+# Check and handle running containers
+check_running_containers() {
+    log_step "Checking for running containers..."
+    
+    local running_containers=$(docker ps --format "{{.Names}}" | grep -E "fake-google" || true)
+    
+    if [ -n "$running_containers" ]; then
+        log_warning "Found running fake-google containers:"
+        echo "$running_containers" | sed 's/^/  • /'
+        
+        if [ "$FORCE_DEPLOY" = true ]; then
+            log_info "Force deploy enabled, will stop these containers"
+        else
+            echo ""
+            log_error "Containers are already running. Use one of these options:"
+            echo "  1. Stop containers first: docker stop \$(docker ps --format "{{.Names}}" | grep fake-google)"
+            echo "  2. Use --force flag to automatically stop containers"
+            echo "  3. Use deploy.sh --stop to stop via compose"
+            echo ""
+            exit 1
+        fi
+    else
+        log_success "No conflicting containers found"
+    fi
+}
+
+# Check for port conflicts
+check_port_conflicts() {
+    log_step "Checking for port conflicts..."
+    
+    local app_port=3001
+    local db_port=5433
+    
+    # Check if .env exists and extract ports
+    if [ -f "$SHARED_DIR/.env" ]; then
+        local env_app_port=$(grep "^APP_PORT=" "$SHARED_DIR/.env" 2>/dev/null | cut -d'=' -f2 || echo "")
+        local env_db_port=$(grep "^DB_PORT=" "$SHARED_DIR/.env" 2>/dev/null | cut -d'=' -f2 || echo "")
+        
+        [ -n "$env_app_port" ] && app_port="$env_app_port"
+        [ -n "$env_db_port" ] && db_port="$env_db_port"
+    fi
+    
+    local conflicts=()
+    
+    # Check app port
+    if lsof -i:$app_port >/dev/null 2>&1; then
+        conflicts+=("Port $app_port (app)")
+    fi
+    
+    # Check database port
+    if lsof -i:$db_port >/dev/null 2>&1; then
+        conflicts+=("Port $db_port (database)")
+    fi
+    
+    if [ ${#conflicts[@]} -gt 0 ]; then
+        log_warning "Port conflicts detected:"
+        for conflict in "${conflicts[@]}"; do
+            echo "  • $conflict"
+        done
+        
+        if [ "$FORCE_DEPLOY" = true ]; then
+            log_info "Force deploy enabled, will attempt to stop conflicting services"
+        else
+            echo ""
+            log_error "Port conflicts found. Use one of these options:"
+            echo "  1. Change ports in $SHARED_DIR/.env"
+            echo "  2. Stop services using these ports"
+            echo "  3. Use --force flag to attempt automatic resolution"
+            echo ""
+            exit 1
+        fi
+    else
+        log_success "No port conflicts found"
+    fi
+}
+
+# Check prerequisites
 
 # Check if running as dry run
 execute_or_simulate() {
@@ -746,14 +824,25 @@ switch_version() {
     
     log_step "Switching to version $version..."
     
-    # Stop current containers
-    if [ -L "$CURRENT_LINK" ]; then
-        log_info "Stopping current containers..."
-        if [ "$DRY_RUN" = false ]; then
+    # Stop ALL fake-google containers (more aggressive approach)
+    log_info "Stopping any running fake-google containers..."
+    if [ "$DRY_RUN" = false ]; then
+        # Stop containers by name pattern
+        if docker ps --format "table {{.Names}}" | grep -E "fake-google" >/dev/null 2>&1; then
+            log_info "Found running fake-google containers, stopping them..."
+            docker stop $(docker ps --format "{{.Names}}" | grep -E "fake-google") 2>/dev/null || true
+            docker rm $(docker ps -a --format "{{.Names}}" | grep -E "fake-google") 2>/dev/null || true
+        fi
+        
+        # Also try stopping from current deployment directory
+        if [ -L "$CURRENT_LINK" ]; then
             cd "$CURRENT_LINK"
-            $DOCKER_COMPOSE_CMD down || true
+            $DOCKER_COMPOSE_CMD down --remove-orphans || true
             cd - >/dev/null
         fi
+        
+        # Wait for containers to fully stop
+        sleep 5
     fi
     
     # Update symlink
@@ -940,6 +1029,12 @@ main() {
     fi
     
     check_prerequisites
+    
+    # Check for running containers (unless doing read-only operations)
+    if [ "$LIST_VERSIONS" != true ] && [ "$SHOW_STATUS" != true ] && [ "$CLEANUP_OLD" != true ]; then
+        check_running_containers
+        check_port_conflicts
+    fi
     
     # Handle different commands
     if [ "$LIST_VERSIONS" = true ]; then

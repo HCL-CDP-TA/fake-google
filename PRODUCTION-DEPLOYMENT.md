@@ -5,18 +5,18 @@
 1. **Copy the script to your production server:**
 
    ```bash
-   scp production-deploy.sh user@server:/opt/fake-google/
+   scp production-deploy.sh user@server:/data/custom/fake-google/
    ```
 
 2. **Make it executable:**
 
    ```bash
-   chmod +x /opt/fake-google/production-deploy.sh
+   chmod +x /data/custom/fake-google/production-deploy.sh
    ```
 
 3. **First time setup:**
    ```bash
-   sudo /opt/fake-google/production-deploy.sh --version v1.0.0
+   sudo /data/custom/fake-google/production-deploy.sh --version v1.0.0
    ```
 
 ## Usage Examples
@@ -58,7 +58,7 @@ sudo ./production-deploy.sh --cleanup
 After deployment, your production structure will be:
 
 ```
-/opt/fake-google/
+/data/custom/fake-google/
 ├── releases/                    # All deployed versions
 │   ├── v1.2.3/                 # Specific version directory
 │   │   ├── .deployment-info    # Deployment metadata
@@ -76,7 +76,7 @@ After deployment, your production structure will be:
 
 ## Environment Configuration
 
-Edit `/opt/fake-google/shared/.env` with your production settings:
+Edit `/data/custom/fake-google/shared/.env` with your production settings:
 
 ```bash
 # Database
@@ -103,6 +103,42 @@ NODE_ENV=production
 
 ## Troubleshooting
 
+### Container Already Running Error
+
+If deployment fails with container conflicts:
+
+```bash
+# Check running containers
+docker ps | grep fake-google
+
+# Option 1: Force deployment (stops containers automatically)
+./production-deploy.sh -v v1.2.3 --force
+
+# Option 2: Manual cleanup
+docker stop $(docker ps --format "{{.Names}}" | grep fake-google)
+docker rm $(docker ps -a --format "{{.Names}}" | grep fake-google)
+
+# Option 3: Use regular deploy script to stop
+./deploy.sh --stop
+```
+
+### Port Conflict Errors
+
+If ports 3001 or 5433 are in use:
+
+```bash
+# Check what's using the ports
+lsof -i:3001
+lsof -i:5433
+
+# Option 1: Change ports in environment
+echo "APP_PORT=3050" >> /data/custom/fake-google/shared/.env
+echo "DB_PORT=5450" >> /data/custom/fake-google/shared/.env
+
+# Option 2: Force deployment (attempts to resolve automatically)
+./production-deploy.sh -v v1.2.3 --force
+```
+
 ### Check deployment status
 
 ```bash
@@ -112,7 +148,7 @@ NODE_ENV=production
 ### View container logs
 
 ```bash
-cd /opt/fake-google/current
+cd /data/custom/fake-google/current
 docker-compose logs -f
 ```
 
@@ -125,7 +161,7 @@ sudo ./production-deploy.sh --rollback v1.2.2
 ### Emergency stop
 
 ```bash
-cd /opt/fake-google/current
+cd /data/custom/fake-google/current
 docker-compose down
 ```
 
@@ -144,4 +180,4 @@ docker-compose down
 - Git installed
 - Sufficient disk space (each version ~500MB)
 - Network access to GitHub
-- Proper permissions to `/opt/fake-google/`
+- Proper permissions to `/data/custom/fake-google/`
