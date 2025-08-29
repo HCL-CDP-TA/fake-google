@@ -1,4 +1,5 @@
 import { addGoogleTrackingToAdUrl } from "@/app/utils/googleTracking"
+import { gtag } from "./GoogleAnalytics"
 
 type PaidAd = {
   title: string
@@ -16,6 +17,9 @@ interface PaidAdsProps {
 
 export default function PaidAds({ ads, loading, currentQuery }: PaidAdsProps) {
   const handleAdClick = (ad: PaidAd, adIndex: number) => {
+    // Track ad click in Google Analytics
+    gtag.adClick(ad.title, ad.url, currentQuery || "", adIndex + 1)
+
     // Emit custom event for UTM tracking
     const adClickEvent = new CustomEvent("adClick", {
       detail: {

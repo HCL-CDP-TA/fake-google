@@ -198,15 +198,46 @@ Access the admin panel at `/admin` to:
 
 ## 🔧 Environment Variables
 
-| Variable                  | Required | Default    | Description                  |
-| ------------------------- | -------- | ---------- | ---------------------------- |
-| `APP_PORT`                | No       | 3001       | Application port             |
-| `DB_PORT`                 | No       | 5433       | Database port                |
-| `DATABASE_URL`            | Yes      | -          | PostgreSQL connection string |
-| `GOOGLE_SEARCH_API_KEY`   | No       | -          | Google Custom Search API key |
-| `GOOGLE_SEARCH_ENGINE_ID` | No       | -          | Custom Search Engine ID      |
-| `GOOGLE_GEMINI_API_KEY`   | No       | -          | Google Gemini API key        |
-| `NODE_ENV`                | No       | production | Node environment             |
+| Variable                     | Required | Default    | Description                                   |
+| ---------------------------- | -------- | ---------- | --------------------------------------------- |
+| `APP_PORT`                   | No       | 3001       | Application port                              |
+| `DB_PORT`                    | No       | 5433       | Database port                                 |
+| `DATABASE_URL`               | Yes      | -          | PostgreSQL connection string                  |
+| `GOOGLE_SEARCH_API_KEY`      | No       | -          | Google Custom Search API key                  |
+| `GOOGLE_SEARCH_ENGINE_ID`    | No       | -          | Custom Search Engine ID                       |
+| `GOOGLE_GEMINI_API_KEY`      | No       | -          | Google Gemini API key                         |
+| `NEXT_PUBLIC_GA_TRACKING_ID` | No       | -          | Google Analytics 4 tracking ID (G-XXXXXXXXXX) |
+| `NODE_ENV`                   | No       | production | Node environment                              |
+
+### Google Analytics Tracking
+
+The application includes comprehensive Google Analytics 4 tracking for both customer and admin interactions:
+
+**Customer Side Tracking:**
+
+- **Page Views**: Homepage and search results pages
+- **Search Events**: Search terms and result counts
+- **Ad Clicks**: Ad title, URL, keyword, and position tracking
+- **Organic Clicks**: Organic result clicks with position data
+- **Navigation**: Logo clicks and admin access attempts
+
+**Admin Side Tracking:**
+
+- **Admin Actions**: Page views, campaign creation, editing, deletion
+- **AI Generation**: AI ad generation attempts and success rates
+- **Campaign Management**: Ad creation, editing, and management actions
+
+**Setup:**
+
+1. Create a Google Analytics 4 property at [analytics.google.com](https://analytics.google.com)
+2. Get your Measurement ID (format: G-XXXXXXXXXX)
+3. Add to your `.env.local` file:
+   ```env
+   NEXT_PUBLIC_GA_TRACKING_ID=G-XXXXXXXXXX
+   ```
+4. Restart your application
+
+**Note**: Analytics only loads when a valid tracking ID is provided. No data is sent to Google without explicit configuration.
 
 ## 🚨 Troubleshooting
 

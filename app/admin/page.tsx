@@ -16,6 +16,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Pencil, Trash2, Plus } from "lucide-react"
+import { gtag } from "@/app/components/GoogleAnalytics"
 
 type AdType = {
   title: string
@@ -78,7 +79,12 @@ export default function Admin() {
 
   // Version state
   const [appVersion, setAppVersion] = useState<string>("")
-  const [isLoadingVersion, setIsLoadingVersion] = useState(true)
+
+  useEffect(() => {
+    // Track admin page view
+    gtag.adminAction("admin_page_view")
+    gtag.pageview("/admin")
+  }, [])
 
   useEffect(() => {
     setIsLoadingAds(true)
@@ -104,9 +110,6 @@ export default function Admin() {
         }
       })
       .catch(console.error)
-      .finally(() => {
-        setIsLoadingVersion(false)
-      })
   }, [])
 
   // Load prompt configuration from localStorage
@@ -163,6 +166,10 @@ Return ONLY a valid JSON array with exactly {numAds} ads and no additional text 
     e.preventDefault()
     if (!keyword.trim()) return
 
+    // Track campaign action
+    const action = editing >= 0 ? "edit_ad" : "create_ad"
+    gtag.campaignAction(action, keyword, ad.title)
+
     const response = await fetch("/api/ads", {
       method: "POST",
       headers: {
@@ -202,14 +209,24 @@ Return ONLY a valid JSON array with exactly {numAds} ads and no additional text 
 
   function handleEdit(i: number) {
     const originalIndex = ads.findIndex(ad => ad === filteredAds[i])
+    const adData = filteredAds[i]
+
+    // Track edit action
+    gtag.campaignAction("start_edit_ad", adData.keyword, adData.ad.title)
+
     setEditing(originalIndex)
-    setKeyword(filteredAds[i].keyword)
-    setAd(filteredAds[i].ad)
+    setKeyword(adData.keyword)
+    setAd(adData.ad)
     setIsModalOpen(true)
   }
 
   function handleDelete(i: number) {
     const originalIndex = ads.findIndex(ad => ad === filteredAds[i])
+    const adData = filteredAds[i]
+
+    // Track delete action
+    gtag.campaignAction("delete_ad", adData.keyword, adData.ad.title)
+
     fetch("/api/ads", {
       method: "DELETE",
       headers: {
@@ -226,6 +243,9 @@ Return ONLY a valid JSON array with exactly {numAds} ads and no additional text 
     if (!aiKeyword.trim() || !aiDisplayUrl.trim() || !aiLandingUrl.trim()) {
       return
     }
+
+    // Track AI generation start
+    gtag.aiGeneration(aiKeyword, numAdsToGenerate, false) // false = starting
 
     setIsGenerating(true)
     setGeneratedAds([])
@@ -267,11 +287,18 @@ Return ONLY a valid JSON array with exactly {numAds} ads and no additional text 
           (_: AIGeneratedAd, index: number) => `${aiKeyword.replace(/\s+/g, "-").toLowerCase()}-campaign-${index + 1}`,
         )
         setAiCampaignNames(campaigns)
+
+        // Track successful AI generation
+        gtag.aiGeneration(aiKeyword, data.ads?.length || 0, true)
       } else {
         console.error("Failed to generate ads")
+        // Track failed AI generation
+        gtag.aiGeneration(aiKeyword, 0, false)
       }
     } catch (error) {
       console.error("Error generating ads:", error)
+      // Track failed AI generation
+      gtag.aiGeneration(aiKeyword, 0, false)
     } finally {
       setIsGenerating(false)
     }
@@ -279,6 +306,12 @@ Return ONLY a valid JSON array with exactly {numAds} ads and no additional text 
 
   async function handleCreateSelectedAds() {
     const selectedGeneratedAds = generatedAds.filter((_, index) => selectedAds[index])
+
+    // Track AI ads creation
+    gtag.adminAction("create_ai_ads", {
+      keyword: aiKeyword,
+      num_ads: selectedGeneratedAds.length,
+    })
 
     for (let i = 0; i < selectedGeneratedAds.length; i++) {
       const genAd = selectedGeneratedAds[i]

@@ -3,6 +3,7 @@ import { ChangeEvent, FormEvent, useState, useEffect } from "react"
 import PaidAds from "./PaidAds"
 import OrganicResults from "./OrganicResults"
 import UTMTracker from "./UTMTracker"
+import { gtag } from "./GoogleAnalytics"
 
 type PaidAd = {
   title: string
@@ -55,11 +56,26 @@ export default function SearchResultsPage({
       .catch(console.error)
   }, [])
 
+  const handleAdminClick = () => {
+    // Track admin access in Google Analytics
+    gtag.adminAction("admin_access", { source: "header_button" })
+  }
+
+  const handleLogoClick = () => {
+    // Track logo click in Google Analytics
+    gtag.event("logo_click", {
+      event_category: "navigation",
+      event_label: "header_logo",
+    })
+    onLogoClick()
+  }
+
   return (
     <div className="min-h-screen bg-white relative">
       {/* Admin gear icon - positioned in very top right */}
       <Link
         href="/admin"
+        onClick={handleAdminClick}
         className="fixed top-4 right-4 z-50 text-gray-600 hover:text-gray-800 p-2 rounded-full hover:bg-gray-100 transition-colors"
         title="Admin">
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
@@ -77,7 +93,7 @@ export default function SearchResultsPage({
         <div className="px-6 py-3">
           <div className="flex items-center gap-8">
             {/* Logo */}
-            <button onClick={onLogoClick} className="text-2xl font-light text-gray-700 google-font">
+            <button onClick={handleLogoClick} className="text-2xl font-light text-gray-700 google-font">
               <span className="text-blue-500">F</span>
               <span className="text-red-500">a</span>
               <span className="text-yellow-500">k</span>

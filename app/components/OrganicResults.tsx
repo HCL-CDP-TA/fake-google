@@ -1,6 +1,7 @@
 import Image from "next/image"
 import { getFaviconUrl } from "../utils/favicon"
 import { addOrganicTrackingToUrl } from "../utils/googleTracking"
+import { gtag } from "./GoogleAnalytics"
 
 type OrganicResult = {
   title: string
@@ -28,6 +29,9 @@ export default function OrganicResults({
   }
 
   const handleResultClick = (result: OrganicResult, index: number) => {
+    // Track organic click in Google Analytics
+    gtag.organicClick(result.title, result.url, currentQuery, index + 1)
+
     // Emit custom event for organic result tracking
     const resultClickEvent = new CustomEvent("organicClick", {
       detail: {
