@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { ChangeEvent, FormEvent, useState } from "react"
+import { ChangeEvent, FormEvent, useState, useEffect } from "react"
 import PaidAds from "./PaidAds"
 import OrganicResults from "./OrganicResults"
 import UTMTracker from "./UTMTracker"
@@ -41,6 +41,19 @@ export default function SearchResultsPage({
   search = "",
 }: SearchResultsPageProps) {
   const [showUTMTracker, setShowUTMTracker] = useState(false)
+  const [appVersion, setAppVersion] = useState<string>("")
+
+  // Fetch application version
+  useEffect(() => {
+    fetch("/api/version")
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          setAppVersion(data.version)
+        }
+      })
+      .catch(console.error)
+  }, [])
 
   return (
     <div className="min-h-screen bg-white relative">
@@ -184,6 +197,13 @@ export default function SearchResultsPage({
 
       {/* UTM Tracker for Martech Demos */}
       <UTMTracker visible={showUTMTracker} onToggle={() => setShowUTMTracker(!showUTMTracker)} />
+
+      {/* Footer with version info */}
+      {appVersion && (
+        <footer className="fixed bottom-4 left-4 text-xs text-gray-400 google-font">
+          v{appVersion}
+        </footer>
+      )}
     </div>
   )
 }

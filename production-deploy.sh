@@ -262,7 +262,7 @@ check_running_containers() {
 cleanup_conflicting_containers() {
     log_step "Cleaning up conflicting containers..."
     
-    # Remove all fake-google containers (running and stopped)
+    # Stop and remove all fake-google containers (running and stopped)
     local all_containers=$(docker ps -aq --filter "name=fake-google" 2>/dev/null || true)
     
     if [ -n "$all_containers" ]; then
@@ -271,12 +271,27 @@ cleanup_conflicting_containers() {
             if [ -n "$container_id" ]; then
                 local container_name=$(docker inspect --format='{{.Name}}' "$container_id" 2>/dev/null | sed 's|^/||' || echo "unknown")
                 log_info "Removing container: $container_name ($container_id)"
+                docker stop "$container_id" 2>/dev/null || true
                 docker rm -f "$container_id" 2>/dev/null || true
             fi
         done
-        sleep 3  # Give Docker time to fully clean up
+        
+        # Additional cleanup by name pattern
+        docker ps -aq --filter "name=fake-google-app" | xargs -r docker rm -f 2>/dev/null || true
+        docker ps -aq --filter "name=fake-google-db" | xargs -r docker rm -f 2>/dev/null || true
+        
+        # Give Docker time to fully clean up
+        sleep 5
+        log_success "Container cleanup completed"
     else
         log_success "No conflicting containers found"
+    fi
+    
+    # Also clean up any orphaned networks
+    local networks=$(docker network ls --filter "name=fake-google" -q 2>/dev/null || true)
+    if [ -n "$networks" ]; then
+        log_info "Cleaning up orphaned networks..."
+        echo "$networks" | xargs -r docker network rm 2>/dev/null || true
     fi
 }
 
@@ -1103,6 +1118,10 @@ deploy() {
     backup_current
     clone_version "$version"
     link_shared_files "$version"
+    
+    # Clean up any conflicting containers BEFORE building
+    cleanup_conflicting_containers
+    
     build_application "$version"
     
     # Handle database initialization or checking
@@ -1129,9 +1148,17 @@ deploy() {
     
     echo ""
     log_info "Application URLs:"
-    echo "• Main App: http://localhost:3000"
-    echo "• Admin: http://localhost:3000/admin"
-    echo "• API: http://localhost:3000/api"
+    
+    # Get the actual configured app port
+    local app_port=3001  # Default
+    if [ -f "$SHARED_DIR/.env" ]; then
+        local env_app_port=$(grep "^APP_PORT=" "$SHARED_DIR/.env" 2>/dev/null | cut -d'=' -f2 || echo "")
+        [ -n "$env_app_port" ] && app_port="$env_app_port"
+    fi
+    
+    echo "• Main App: http://localhost:$app_port"
+    echo "• Admin: http://localhost:$app_port/admin"
+    echo "• API: http://localhost:$app_port/api"
     
     # Final health check
     if [ "$DRY_RUN" = false ]; then
@@ -1139,7 +1166,7 @@ deploy() {
         log_step "Performing health check..."
         sleep 10
         
-        if curl -f -s http://localhost:3000 >/dev/null 2>&1; then
+        if curl -f -s "http://localhost:$app_port" >/dev/null 2>&1; then
             log_success "✅ Application is healthy and responding"
         else
             log_warning "⚠️  Application may still be starting up"
