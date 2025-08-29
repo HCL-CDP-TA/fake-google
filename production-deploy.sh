@@ -298,14 +298,31 @@ check_port_conflicts() {
     
     local conflicts=()
     
-    # Check app port
-    if lsof -i:$app_port >/dev/null 2>&1; then
-        conflicts+=("Port $app_port (app)")
-    fi
-    
-    # Check database port
-    if lsof -i:$db_port >/dev/null 2>&1; then
-        conflicts+=("Port $db_port (database)")
+    # For default deployment, only check app port (database is supposed to be running)
+    if [ "$FORCE_DEPLOY" != true ] && [ "$INIT_DATABASE" != true ]; then
+        # Check app port only
+        if lsof -i:$app_port >/dev/null 2>&1; then
+            # Check if it's our own fake-google-app container
+            local app_process=$(lsof -ti:$app_port 2>/dev/null || true)
+            local app_container=$(docker ps --format "{{.Names}}" | grep -E "fake-google-app" || true)
+            
+            if [ -n "$app_container" ]; then
+                log_info "App port $app_port in use by our app container (will be restarted)"
+            else
+                conflicts+=("Port $app_port (app)")
+            fi
+        fi
+        
+        log_info "Database port $db_port assumed to be in use by our database (normal)"
+    else
+        # Force mode or init: Check all ports
+        if lsof -i:$app_port >/dev/null 2>&1; then
+            conflicts+=("Port $app_port (app)")
+        fi
+        
+        if lsof -i:$db_port >/dev/null 2>&1; then
+            conflicts+=("Port $db_port (database)")
+        fi
     fi
     
     if [ ${#conflicts[@]} -gt 0 ]; then
@@ -930,12 +947,20 @@ switch_version() {
     if [ "$FORCE_DEPLOY" != true ] && [ "$INIT_DATABASE" != true ]; then
         log_info "Normal deployment: Switching to new version"
         
-        # Clean up any remaining app containers
+        # Clean up any remaining app containers (running or stopped)
         if [ "$DRY_RUN" = false ]; then
-            # Remove any stopped app containers
-            local stopped_app_containers=$(docker ps -a --format "{{.Names}}" | grep -E "fake-google-app" || true)
-            if [ -n "$stopped_app_containers" ]; then
-                echo "$stopped_app_containers" | xargs docker rm -f 2>/dev/null || true
+            # Remove any app containers (running or stopped)
+            local all_app_containers=$(docker ps -a --format "{{.Names}}" | grep -E "fake-google-app" || true)
+            if [ -n "$all_app_containers" ]; then
+                log_info "Cleaning up app containers..."
+                echo "$all_app_containers" | xargs docker rm -f 2>/dev/null || true
+            fi
+            
+            # Also ensure compose cleanup for app only
+            if [ -L "$CURRENT_LINK" ]; then
+                cd "$CURRENT_LINK"
+                $DOCKER_COMPOSE_CMD rm -f app 2>/dev/null || true
+                cd - >/dev/null
             fi
         fi
     else
