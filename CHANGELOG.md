@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.2](https://github.com/HCL-CDP-TA/fake-google/compare/v1.3.1...v1.3.2) (2025-08-29)
+
+
+### Bug Fixes
+
+* GA env var build fix ([1ab8d00](https://github.com/HCL-CDP-TA/fake-google/commit/1ab8d0061953a6877d0d35559b8677746b8e01fb))
+
 ## [1.3.1](https://github.com/HCL-CDP-TA/fake-google/compare/v1.3.0...v1.3.1) (2025-08-29)
 
 
