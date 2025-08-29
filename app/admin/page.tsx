@@ -377,11 +377,7 @@ Return ONLY a valid JSON array with exactly {numAds} ads and no additional text 
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-6 gap-4">
             <div>
               <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 google-font">Ad Campaign Manager</h1>
-              {appVersion && (
-                <div className="text-sm text-gray-500 google-font mt-1">
-                  Version {appVersion}
-                </div>
-              )}
+              {appVersion && <div className="text-sm text-gray-500 google-font mt-1">Version {appVersion}</div>}
             </div>
             <div className="flex gap-3">
               <Link

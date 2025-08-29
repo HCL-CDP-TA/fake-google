@@ -199,11 +199,7 @@ export default function SearchResultsPage({
       <UTMTracker visible={showUTMTracker} onToggle={() => setShowUTMTracker(!showUTMTracker)} />
 
       {/* Footer with version info */}
-      {appVersion && (
-        <footer className="fixed bottom-4 left-4 text-xs text-gray-400 google-font">
-          v{appVersion}
-        </footer>
-      )}
+      {appVersion && <footer className="fixed bottom-4 left-4 text-xs text-gray-400 google-font">v{appVersion}</footer>}
     </div>
   )
 }
