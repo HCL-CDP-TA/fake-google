@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import { Roboto } from "next/font/google"
 import "./globals.css"
-import GoogleAnalyticsWrapper from "./components/GoogleAnalyticsWrapper"
+import GoogleAnalytics from "./components/GoogleAnalytics"
 
 const roboto = Roboto({
   weight: ["300", "400", "500", "700"],
@@ -33,7 +33,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${roboto.variable} antialiased font-roboto`}>
-        {gaTrackingId && gaTrackingId !== "G-XXXXXXXXXX" && <GoogleAnalyticsWrapper gaId={gaTrackingId} />}
+        {gaTrackingId && gaTrackingId !== "G-XXXXXXXXXX" && <GoogleAnalytics gaId={gaTrackingId} />}
         {children}
       </body>
     </html>
