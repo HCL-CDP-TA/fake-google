@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.5](https://github.com/HCL-CDP-TA/fake-google/compare/v1.3.4...v1.3.5) (2025-09-01)
+
+
+### Bug Fixes
+
+* removed ga debug code ([691b4b9](https://github.com/HCL-CDP-TA/fake-google/commit/691b4b94b323b438a85019f50dee4312d09e9028))
+
 ## [1.3.4](https://github.com/HCL-CDP-TA/fake-google/compare/v1.3.3...v1.3.4) (2025-09-01)
 
 
