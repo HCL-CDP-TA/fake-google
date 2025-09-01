@@ -442,15 +442,6 @@ Return ONLY a valid JSON array with exactly {numAds} ads and no additional text 
               </div>
 
               <div className="flex gap-3">
-                <Button
-                  onClick={() => {
-                    gtag.test()
-                    alert("GA4 test event sent! Check your browser console and GA4 dashboard.")
-                  }}
-                  variant="outline"
-                  size="sm">
-                  🧪 Test GA4
-                </Button>
                 <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
                   <DialogTrigger asChild>
                     <Button
