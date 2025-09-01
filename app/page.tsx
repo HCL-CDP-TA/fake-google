@@ -9,18 +9,16 @@ export default function Home() {
   const { query, setQuery, search, ads, organic, loading, handleSearch, goHome } = useSearch()
 
   useEffect(() => {
-    const trackingId = process.env.NEXT_PUBLIC_GA_TRACKING_ID
-
     if (search) {
       document.title = `${search} - Fake Google`
       // Track page view for search results
-      gtag.pageview(window.location.pathname + window.location.search, trackingId)
+      gtag.pageview(window.location.pathname + window.location.search)
       // Track search event
       gtag.search(search, ads.length + organic.length)
     } else {
       document.title = "Fake Google"
       // Track homepage view
-      gtag.pageview(window.location.pathname, trackingId)
+      gtag.pageview(window.location.pathname)
     }
   }, [search, ads.length, organic.length])
 

@@ -12,7 +12,7 @@ interface GoogleAnalyticsProps {
 declare global {
   interface Window {
     gtag?: (...args: unknown[]) => void
-    dataLayer?: unknown[]
+    dataLayer?: Record<string, unknown>[]
     gtagUtils?: typeof gtag
   }
 }
@@ -85,6 +85,31 @@ export const gtag = {
     }
   },
 
+  // Campaign management tracking
+  campaignAction: (action: string, keyword: string, adTitle?: string) => {
+    if (typeof window !== "undefined" && window.gtag) {
+      window.gtag("event", "campaign_management", {
+        event_category: "campaign",
+        event_label: action,
+        keyword: keyword,
+        ad_title: adTitle,
+      })
+    }
+  },
+
+  // AI generation tracking
+  aiGeneration: (keyword: string, numAds: number, success: boolean) => {
+    if (typeof window !== "undefined" && window.gtag) {
+      window.gtag("event", "ai_ad_generation", {
+        event_category: "ai_features",
+        event_label: success ? "success" : "failure",
+        keyword: keyword,
+        num_ads_generated: numAds,
+        value: success ? 1 : 0,
+      })
+    }
+  },
+
   // Test function
   test: () => {
     if (typeof window !== "undefined" && window.gtag) {
@@ -107,8 +132,8 @@ export default function GoogleAnalytics({ gaId }: GoogleAnalyticsProps) {
   const searchParams = useSearchParams()
 
   useEffect(() => {
-    if (pathname) {
-      const url = pathname + (searchParams.toString() ? `?${searchParams.toString()}` : "")
+    if (pathname && typeof window !== "undefined") {
+      const url = pathname + (searchParams?.toString() ? `?${searchParams.toString()}` : "")
       gtag.pageview(url)
     }
   }, [pathname, searchParams])
