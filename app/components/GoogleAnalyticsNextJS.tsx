@@ -11,9 +11,7 @@ interface GoogleAnalyticsProps {
 // Declare gtag function
 declare global {
   interface Window {
-    gtag?: (...args: unknown[]) => void
-    dataLayer?: unknown[]
-    gtagUtils?: typeof gtag
+    gtag?: (...args: any[]) => void
   }
 }
 
@@ -29,7 +27,7 @@ export const gtag = {
   },
 
   // Event tracking
-  event: (action: string, parameters?: Record<string, unknown>) => {
+  event: (action: string, parameters?: Record<string, any>) => {
     if (typeof window !== "undefined" && window.gtag) {
       window.gtag("event", action, parameters)
     }
@@ -75,7 +73,7 @@ export const gtag = {
   },
 
   // Admin actions tracking
-  adminAction: (action: string, details?: Record<string, unknown>) => {
+  adminAction: (action: string, details?: Record<string, any>) => {
     if (typeof window !== "undefined" && window.gtag) {
       window.gtag("event", "admin_action", {
         event_category: "admin",
@@ -122,9 +120,10 @@ export default function GoogleAnalytics({ gaId }: GoogleAnalyticsProps) {
           console.log("Next.js GA4: Script loaded successfully")
 
           // Initialize gtag
-          window.gtag = function gtag(...args: unknown[]) {
-            window.dataLayer = window.dataLayer || []
-            window.dataLayer.push(args as unknown as Record<string, unknown>)
+          window.gtag = function gtag(...args: any[]) {
+            // eslint-disable-next-line prefer-rest-params
+            ;(window as any).dataLayer = (window as any).dataLayer || []
+            ;(window as any).dataLayer.push(arguments)
           }
 
           // Configure GA4 with proper localhost handling
@@ -147,7 +146,7 @@ export default function GoogleAnalytics({ gaId }: GoogleAnalyticsProps) {
           console.log("Next.js GA4: Configured with domain override for localhost:", isLocalhost)
 
           // Make gtag available globally for testing
-          window.gtagUtils = gtag
+          ;(window as any).gtagUtils = gtag
 
           // Send initial test event
           setTimeout(() => {

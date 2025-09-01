@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react"
 import { updatePageUrlWithGoogleParams } from "@/app/utils/googleTracking"
+import { gtag } from "@/app/components/GoogleAnalytics"
 
 type PaidAd = {
   title: string
@@ -91,9 +92,13 @@ export function useSearch() {
 
       Promise.all([fetchAds(searchQuery), fetchOrganicResults(searchQuery)]).finally(() => {
         setLoading(false)
+
+        // Track search completion with result count
+        const totalResults = ads.length + organic.length
+        gtag.search(searchQuery, totalResults)
       })
     },
-    [fetchAds, fetchOrganicResults],
+    [fetchAds, fetchOrganicResults, ads.length, organic.length],
   )
 
   // Read query from URL on mount
@@ -117,7 +122,7 @@ export function useSearch() {
     // Update URL with new search query
     updateURL(query)
 
-    // Perform the search
+    // Perform the search (tracking will happen in performSearch)
     performSearch(query)
   }
 

@@ -30,10 +30,18 @@ export default function RootLayout({
 }>) {
   const gaTrackingId = process.env.NEXT_PUBLIC_GA_TRACKING_ID || "G-XXXXXXXXXX"
 
+  // Debug logging
+  console.log("Layout - GA Tracking ID:", gaTrackingId)
+  console.log("Layout - Environment check:", {
+    NODE_ENV: process.env.NODE_ENV,
+    hasTrackingId: !!process.env.NEXT_PUBLIC_GA_TRACKING_ID,
+    willRenderGA: gaTrackingId && gaTrackingId !== "G-XXXXXXXXXX",
+  })
+
   return (
     <html lang="en">
       <body className={`${roboto.variable} antialiased font-roboto`}>
-        {gaTrackingId && gaTrackingId !== "G-XXXXXXXXXX" && <GoogleAnalytics trackingId={gaTrackingId} />}
+        {gaTrackingId && gaTrackingId !== "G-XXXXXXXXXX" && <GoogleAnalytics gaId={gaTrackingId} />}
         {children}
       </body>
     </html>
