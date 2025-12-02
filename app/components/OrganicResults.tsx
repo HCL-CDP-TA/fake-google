@@ -58,8 +58,8 @@ export default function OrganicResults({
   return (
     <div>
       {results.map((result, i) => (
-        <div key={i} className="mb-6">
-          <div className="mb-1 flex items-center gap-3">
+        <div key={i} className="mb-4 md:mb-6">
+          <div className="mb-1 flex items-center gap-2 md:gap-3">
             {result.favicon ? (
               <Image
                 src={result.favicon}
@@ -94,12 +94,12 @@ export default function OrganicResults({
               target="_blank"
               rel="noopener"
               onClick={() => handleResultClick(result, i)}
-              className="text-xl text-blue-700 hover:underline visited:text-purple-700 google-font">
+              className="text-base md:text-xl text-blue-700 hover:underline visited:text-purple-700 google-font">
               {result.title}
             </a>
           </div>
-          <div className="text-green-700 text-sm mb-1 ml-7 google-font">{result.url}</div>
-          <div className="text-gray-700 text-sm leading-5 ml-7 google-font">{result.description}</div>
+          <div className="text-green-700 text-xs md:text-sm mb-1 ml-0 md:ml-7 google-font">{result.url}</div>
+          <div className="text-gray-700 text-xs md:text-sm leading-5 ml-0 md:ml-7 google-font">{result.description}</div>
         </div>
       ))}
     </div>

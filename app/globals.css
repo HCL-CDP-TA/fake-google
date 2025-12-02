@@ -151,3 +151,14 @@
     cursor: not-allowed;
   }
 }
+
+@layer utilities {
+  /* Hide scrollbar for horizontal scrolling tabs on mobile */
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}

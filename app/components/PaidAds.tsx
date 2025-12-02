@@ -51,7 +51,7 @@ export default function PaidAds({ ads, loading, currentQuery }: PaidAdsProps) {
   return (
     <div className="mb-6">
       {ads.map((ad, i) => (
-        <div key={i} className="mb-6 p-4 border border-gray-200 rounded-lg bg-gray-50">
+        <div key={i} className="mb-4 md:mb-6 p-3 md:p-4 border border-gray-200 rounded-lg bg-gray-50">
           <div className="flex items-center gap-2 mb-1">
             <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-yellow-100 text-yellow-800 google-font">
               Sponsored
@@ -63,13 +63,13 @@ export default function PaidAds({ ads, loading, currentQuery }: PaidAdsProps) {
               target="_blank"
               rel="noopener"
               onClick={() => handleAdClick(ad, i)}
-              className="text-xl text-blue-700 hover:underline visited:text-purple-700 google-font">
+              className="text-base md:text-xl text-blue-700 hover:underline visited:text-purple-700 google-font">
               {ad.title}
             </a>
           </div>
-          <div className="text-green-700 text-sm mb-1 google-font">{ad.display_url || ad.url}</div>
-          <div className="text-gray-700 text-sm leading-5 google-font">{ad.description}</div>
-          {ad.description2 && <div className="text-gray-700 text-sm leading-5 google-font">{ad.description2}</div>}
+          <div className="text-green-700 text-xs md:text-sm mb-1 google-font break-all">{ad.display_url || ad.url}</div>
+          <div className="text-gray-700 text-xs md:text-sm leading-5 google-font">{ad.description}</div>
+          {ad.description2 && <div className="text-gray-700 text-xs md:text-sm leading-5 google-font">{ad.description2}</div>}
         </div>
       ))}
     </div>
