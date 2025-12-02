@@ -75,24 +75,21 @@ open http://localhost:3002
 
 ## 🏗️ Architecture
 
-- **Frontend**: Next.js 15 with App Router and TypeScript
-- **Database**: PostgreSQL with ads campaign storage
-- **Styling**: Google-accurate CSS with shadcn/ui components
-- **AI Integration**: Google Gemini API with fallback system
-- **Search**: Google Custom Search API integration
-- **Deployment**: Docker containerization with multi-stage builds
-
 ## 📖 Documentation
-
-- **[Deployment Guide](./DEPLOYMENT.md)**: Comprehensive deployment instructions
-- **[Port Management](./PORT-MANAGEMENT.md)**: Multi-app server port configuration
-- **[Environment Setup](./.env.example)**: Environment variable configuration
 
 ## 🎯 Use Cases
 
 - **Martech Demonstrations**: Show complete customer journey from search to conversion
-- **Campaign Testing**: Test ad campaigns in a controlled environment
-- **Training**: Train teams on digital marketing concepts
+
+## 🐳 Deployment
+
+### Production (Recommended)
+
+```bash
+# Zero-downtime, versioned production deployment
+sudo ./production-deploy.sh --version v1.2.3
+```
+
 - **Prototyping**: Prototype search-based marketing flows
 - **Education**: Demonstrate how search advertising works
 
@@ -102,7 +99,6 @@ open http://localhost:3002
 
 - Node.js 18+
 - PostgreSQL 12+ (or use Docker)
-- Optional: Google API keys for enhanced functionality
 
 ### Development Setup
 

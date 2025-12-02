@@ -1,10 +1,10 @@
 # Fake Google - Deployment Guide
 
-This guide covers Docker-based deployment with port conflict resolution for multi-app server environments.
+This guide covers deployment for all environments. **For production, always use `production-deploy.sh` for zero-downtime, versioned deployments.**
 
 ## 🚀 Quick Start
 
-```bash
+````bash
 # Clone and deploy
 git clone https://github.com/HCL-CDP-TA/fake-google.git
 cd fake-google
@@ -16,61 +16,28 @@ cd fake-google
 ./deploy.sh
 
 # Access: http://localhost:3001
-```
+```bash
+# Production deployment (recommended)
+sudo ./production-deploy.sh --version v1.2.3
 
-## 🐳 Docker Deployment (Primary Method)
+# Development with hot reload
+./deploy.sh --dev
 
-**Important**: This application is designed to avoid common port conflicts in multi-app server environments.
+# View logs (development)
+./deploy.sh --logs
 
-### Quick Port Setup
+# Manual Docker Compose commands (development only)
+docker-compose -f docker-compose.dev.yml up -d
+docker-compose down
+docker-compose logs -f
+````
 
-Use the port configuration script for easy setup:
+## 🚀 Development/Testing
+
+For development or local testing, use:
 
 ```bash
-# Make the script executable
-chmod +x port-config.sh
-
-# Interactive configuration (recommended)
-./port-config.sh interactive
-
-# Quick status check
-./port-config.sh status
-
-# Use preset configurations
-./port-config.sh preset multi    # Multi-app deployment
-./port-config.sh preset single   # Single app deployment
-./port-config.sh preset staging  # Staging environment
-```
-
-### Default Port Configuration
-
-| Environment | Application | Database | Purpose                             |
-| ----------- | ----------- | -------- | ----------------------------------- |
-| Production  | 3001        | 5433     | Avoid conflicts with standard ports |
-| Development | 3002        | 5434     | Separate dev environment            |
-| Standard    | 3000        | 5432     | Traditional single-app deployment   |
-
-### Custom Port Configuration
-
-Set custom ports via environment variables:
-
-```bash
-# Production ports
-export APP_PORT=3001
-export DB_PORT=5433
-
-# Development ports
-export DEV_APP_PORT=3002
-export DEV_DB_PORT=5434
-```
-
-Or edit your `.env` file:
-
-```env
-APP_PORT=3001
-DB_PORT=5433
-DEV_APP_PORT=3002
-DEV_DB_PORT=5434
+./deploy.sh --dev
 ```
 
 ---
@@ -233,8 +200,8 @@ docker-compose logs -f                  # View logs
 # Use multi-app preset
 ./port-config.sh preset multi
 
-# Deploy with custom ports
-./docker-deploy.sh build
+# Deploy with custom ports (production)
+sudo ./production-deploy.sh --version v1.2.3
 ```
 
 **Scenario 2: Multiple environments on same server**
@@ -251,7 +218,7 @@ docker-compose logs -f                  # View logs
 
 ```bash
 # Use development environment
-./docker-deploy.sh dev
+./deploy.sh --dev
 ```
 
 ### Manual Port Configuration
@@ -327,7 +294,7 @@ If you see database connection errors:
 For Docker build issues:
 
 1. Clear Docker cache: `docker system prune -a`
-2. Rebuild: `./docker-deploy.sh build`
+2. Rebuild: `./deploy.sh --clean`
 3. Check port configuration: `./port-config.sh status`
 
 ### Common Port Issues

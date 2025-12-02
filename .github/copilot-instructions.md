@@ -18,14 +18,12 @@ Fake Google is a realistic Google search interface demo built for martech pipeli
 npm install
 npm run dev              # Starts dev server on port 3000 with Turbopack
 
+
 # Development (Docker)
 ./deploy.sh --dev        # Starts containerized dev environment on port 3002
 
-# Production deployment
-./deploy.sh              # Builds and starts production containers on port 3001
-./deploy.sh --clean      # Clean rebuild (removes all containers/volumes)
-./deploy.sh --stop       # Stop all containers
-./deploy.sh --logs       # View container logs
+# Production deployment (Recommended)
+sudo ./production-deploy.sh --version v1.2.3   # Zero-downtime, versioned production deployment
 
 # Port configuration (for multi-app servers)
 ./port-config.sh status       # Check current port usage
