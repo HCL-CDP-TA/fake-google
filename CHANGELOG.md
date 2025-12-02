@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.6](https://github.com/HCL-CDP-TA/fake-google/compare/v1.3.5...v1.3.6) (2025-12-02)
+
+
+### Bug Fixes
+
+* mobile view, Gemini model change, logo change ([7c25f73](https://github.com/HCL-CDP-TA/fake-google/commit/7c25f73d17477f6392f77513cefbbd00203eb61b))
+
 ## [1.3.5](https://github.com/HCL-CDP-TA/fake-google/compare/v1.3.4...v1.3.5) (2025-09-01)
 
 
