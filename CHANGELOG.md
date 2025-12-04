@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.3.7](https://github.com/HCL-CDP-TA/fake-google/compare/v1.3.6...v1.3.7) (2025-12-04)
+
+
+### Bug Fixes
+
+* remove scrollbars in mobile mode ([d8ed2b9](https://github.com/HCL-CDP-TA/fake-google/commit/d8ed2b9c3c5f1c81fc02a4243f83e9b182eb4dfe))
+* uses a smartlink to open in a browser tab when used with iframes ([c33a7e5](https://github.com/HCL-CDP-TA/fake-google/commit/c33a7e52489d0bb7b7ddf38ca939eb0ee4c1f012))
+
 ## [1.3.6](https://github.com/HCL-CDP-TA/fake-google/compare/v1.3.5...v1.3.6) (2025-12-02)
 
 
