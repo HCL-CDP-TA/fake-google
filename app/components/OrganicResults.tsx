@@ -2,6 +2,7 @@ import Image from "next/image"
 import { getFaviconUrl } from "../utils/favicon"
 import { addOrganicTrackingToUrl } from "../utils/googleTracking"
 import { gtag } from "./GoogleAnalytics"
+import { SmartLink } from "./SmartLink"
 
 type OrganicResult = {
   title: string
@@ -89,17 +90,19 @@ export default function OrganicResults({
                 }}
               />
             )}
-            <a
+            <SmartLink
               href={getResultUrl(result, i)}
               target="_blank"
               rel="noopener"
               onClick={() => handleResultClick(result, i)}
               className="text-base md:text-xl text-blue-700 hover:underline visited:text-purple-700 google-font">
               {result.title}
-            </a>
+            </SmartLink>
           </div>
           <div className="text-green-700 text-xs md:text-sm mb-1 ml-0 md:ml-7 google-font">{result.url}</div>
-          <div className="text-gray-700 text-xs md:text-sm leading-5 ml-0 md:ml-7 google-font">{result.description}</div>
+          <div className="text-gray-700 text-xs md:text-sm leading-5 ml-0 md:ml-7 google-font">
+            {result.description}
+          </div>
         </div>
       ))}
     </div>

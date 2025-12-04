@@ -1,5 +1,6 @@
 import { addGoogleTrackingToAdUrl } from "@/app/utils/googleTracking"
 import { gtag } from "./GoogleAnalytics"
+import { SmartLink } from "./SmartLink"
 
 type PaidAd = {
   title: string
@@ -58,18 +59,20 @@ export default function PaidAds({ ads, loading, currentQuery }: PaidAdsProps) {
             </span>
           </div>
           <div className="mb-1">
-            <a
+            <SmartLink
               href={getAdUrl(ad, i)}
               target="_blank"
               rel="noopener"
               onClick={() => handleAdClick(ad, i)}
               className="text-base md:text-xl text-blue-700 hover:underline visited:text-purple-700 google-font">
               {ad.title}
-            </a>
+            </SmartLink>
           </div>
           <div className="text-green-700 text-xs md:text-sm mb-1 google-font break-all">{ad.display_url || ad.url}</div>
           <div className="text-gray-700 text-xs md:text-sm leading-5 google-font">{ad.description}</div>
-          {ad.description2 && <div className="text-gray-700 text-xs md:text-sm leading-5 google-font">{ad.description2}</div>}
+          {ad.description2 && (
+            <div className="text-gray-700 text-xs md:text-sm leading-5 google-font">{ad.description2}</div>
+          )}
         </div>
       ))}
     </div>
