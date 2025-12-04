@@ -161,4 +161,17 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+
+  /* Hide all scrollbars on mobile devices */
+  @media (max-width: 767px) {
+    html::-webkit-scrollbar,
+    body::-webkit-scrollbar {
+      display: none;
+    }
+    html,
+    body {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  }
 }
