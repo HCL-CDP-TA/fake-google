@@ -11,7 +11,7 @@ const roboto = Roboto({
 })
 
 export const metadata: Metadata = {
-  title: "Fake Google",
+  title: "Google",
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "any" },

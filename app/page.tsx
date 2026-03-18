@@ -10,13 +10,13 @@ export default function Home() {
 
   useEffect(() => {
     if (search) {
-      document.title = `${search} - Fake Google`
+      document.title = `${search} - Google`
       // Track page view for search results
       gtag.pageview(window.location.pathname + window.location.search)
       // Track search event
       gtag.search(search, ads.length + organic.length)
     } else {
-      document.title = "Fake Google"
+      document.title = "Google"
       // Track homepage view
       gtag.pageview(window.location.pathname)
     }
