@@ -1,58 +1,35 @@
-services:
-  # PostgreSQL Database
-  postgres:
-    platform: linux/amd64
-    image: postgres:16
-    container_name: fake-google-db
-    environment:
-      POSTGRES_DB: fakegoogle
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: admin
-      PGDATA: /var/lib/postgresql/data/pgdata
-    volumes:
-      - postgres_data:/var/lib/postgresql/data/pgdata
-      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
-    ports:
-      - "${DB_PORT:-5433}:5432" # Default to 5433 to avoid conflicts
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d fakegoogle"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-    networks:
-      - fake-google-network
+version: "3.8"
 
-  # Next.js Application
-  app:
-    platform: linux/amd64
+services:
+  fake-google:
     build:
       context: .
       dockerfile: Dockerfile
       args:
-        NEXT_PUBLIC_GA_TRACKING_ID: ${NEXT_PUBLIC_GA_TRACKING_ID:-}
-    container_name: fake-google-app
-    environment:
-      NODE_ENV: production
-      DATABASE_URL: postgres://postgres:admin@postgres:5432/fakegoogle
-      GOOGLE_SEARCH_API_KEY: ${GOOGLE_SEARCH_API_KEY:-}
-      GOOGLE_SEARCH_ENGINE_ID: ${GOOGLE_SEARCH_ENGINE_ID:-}
-      GOOGLE_GEMINI_API_KEY: ${GOOGLE_GEMINI_API_KEY:-}
-      NEXT_PUBLIC_GA_TRACKING_ID: ${NEXT_PUBLIC_GA_TRACKING_ID:-}
-      PORT: 3000
-    ports:
-      - "${APP_PORT:-3001}:3000" # Default to 3001 to avoid conflicts
-    depends_on:
-      postgres:
-        condition: service_healthy
+        NODE_ENV: production
+        BUILD_DATE: "${BUILD_DATE:-}"
+        VCS_REF: "${VCS_REF:-}"
+        VERSION: "${VERSION:-latest}"
+        NEXT_PUBLIC_GA_TRACKING_ID: "${NEXT_PUBLIC_GA_TRACKING_ID:-}"
+    container_name: fake-google
     restart: unless-stopped
-    networks:
-      - fake-google-network
-
-volumes:
-  postgres_data:
-    driver: local
+    ports:
+      - "${PORT:-3001}:3000"
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - PORT=3000
+      - DATABASE_URL=${DATABASE_URL}
+    labels:
+      - "app=fake-google"
+      - "environment=${ENVIRONMENT:-production}"
+      - "version=${VERSION:-latest}"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
 networks:
-  fake-google-network:
-    driver: bridge
+  default:
+    name: fake-google-network

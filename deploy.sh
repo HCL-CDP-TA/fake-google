@@ -1,355 +1,234 @@
 #!/bin/bash
 
-# Fake Google Deployment Script
-# Simple Docker-based deployment for all environments
-
-set -e  # Exit on any error
-
-# Check Docker prerequisites
-check_docker() {
-    if ! command -v docker >/dev/null 2>&1; then
-        echo -e "${RED}❌ Docker is not installed${NC}"
-        echo "Please install Docker: https://docs.docker.com/get-docker/"
-        exit 1
-    fi
-    
-    # Check for newer docker compose (preferred) or legacy docker-compose
-    if docker compose version >/dev/null 2>&1; then
-        DOCKER_COMPOSE_CMD="docker compose"
-        echo -e "${GREEN}✅ Using newer docker compose${NC}"
-    elif command -v docker-compose >/dev/null 2>&1; then
-        DOCKER_COMPOSE_CMD="docker-compose"
-        echo -e "${YELLOW}⚠️  Using legacy docker-compose${NC}"
-    else
-        echo -e "${RED}❌ Docker Compose is not available${NC}"
-        echo "Please install Docker Compose or update Docker to a version with built-in compose"
-        exit 1
-    fi
-    
-    if ! docker info >/dev/null 2>&1; then
-        echo -e "${RED}❌ Docker is not running${NC}"
-        echo "Please start Docker and try again"
-        exit 1
-    fi
-}
+set -e
 
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Configuration
-COMPOSE_FILE="docker-compose.yml"
-DEV_COMPOSE_FILE="docker-compose.dev.yml"
+GITHUB_REPO="git@github.com:HCL-CDP-TA/fake-google.git"
 APP_NAME="fake-google"
+CONTAINER_NAME="fake-google"
+IMAGE_NAME="fake-google"
+HOST_PORT=3001
+CONTAINER_PORT=3000
+DOCKER_NETWORK="multitenant-network"
+DEFAULT_SSH_KEY="$HOME/.ssh/id_ed25519"
 
-# Default values
-DEVELOPMENT=false
-BUILD_ONLY=false
-CLEAN_BUILD=false
-LOGS=false
-STOP_ONLY=false
-UPDATE_CODE=false
-
-# Help function
-show_help() {
-    echo "Fake Google - Docker Deployment"
-    echo "================================"
-    echo ""
-    echo "Usage: $0 [options]"
-    echo ""
-    echo "Options:"
-    echo "  -h, --help              Show this help message"
-    echo "  -d, --dev               Development mode (hot reload)"
-    echo "  -b, --build-only        Only build images, don't start"
-    echo "  -c, --clean             Clean build (no cache)"
-    echo "  -l, --logs              Show logs after starting"
-    echo "  -s, --stop              Stop containers only"
-    echo "  -u, --update            Pull latest code from git before deploying"
-    echo ""
-    echo "Quick Start:"
-    echo "  ./deploy.sh                       # Production deployment"
-    echo "  ./deploy.sh --dev                 # Development with hot reload"
-    echo "  ./deploy.sh --clean               # Clean production build"
-    echo "  ./deploy.sh --update              # Pull latest code and deploy"
-    echo ""
-    echo "Management:"
-    echo "  ./deploy.sh --stop                # Stop all containers"
-    echo "  ./deploy.sh --logs                # View container logs"
-    echo ""
-    echo "Prerequisites:"
-    echo "  • Docker and Docker Compose installed"
-    echo "  • .env file configured (optional)"
-    echo ""
-    echo "For port configuration: ./port-config.sh interactive"
-}
-
-# Parse command line arguments
-while [[ $# -gt 0 ]]; do
-    case $1 in
-        -h|--help)
-            show_help
-            exit 0
-            ;;
-        -d|--dev)
-            DEVELOPMENT=true
-            COMPOSE_FILE="$DEV_COMPOSE_FILE"
-            shift
-            ;;
-        -b|--build-only)
-            BUILD_ONLY=true
-            shift
-            ;;
-        -c|--clean)
-            CLEAN_BUILD=true
-            shift
-            ;;
-        -l|--logs)
-            LOGS=true
-            shift
-            ;;
-        -s|--stop)
-            STOP_ONLY=true
-            shift
-            ;;
-        -u|--update)
-            UPDATE_CODE=true
-            shift
-            ;;
-        *)
-            echo -e "${RED}Unknown option: $1${NC}"
-            show_help
-            exit 1
-            ;;
-    esac
-done
-
-# Set compose file based on development flag
-if [ "$DEVELOPMENT" = true ]; then
-    COMPOSE_FILE="$DEV_COMPOSE_FILE"
-    echo -e "${BLUE}🔧 Using development configuration${NC}"
-else
-    echo -e "${BLUE}🚀 Using production configuration${NC}"
+# Check arguments
+if [ "$#" -lt 2 ]; then
+  echo -e "${RED}Usage: $0 <version-tag> <environment> [--local|--branch]${NC}"
+  echo -e "Examples:"
+  echo -e "  $0 v1.0.0 production"
+  echo -e "  $0 v1.2.3 staging"
+  echo -e "  $0 local development --local"
+  echo -e "  $0 feature/my-branch development --branch"
+  exit 1
 fi
 
-echo "========================================"
+VERSION_TAG=$1
+ENVIRONMENT=$2
+USE_LOCAL=false
+USE_BRANCH=false
 
-# Function to update code from git
-update_code() {
-    if [ "$UPDATE_CODE" = true ]; then
-        echo -e "${YELLOW}📥 Updating code from git...${NC}"
-        
-        # Check if we're in a git repository
-        if ! git rev-parse --git-dir >/dev/null 2>&1; then
-            echo -e "${RED}❌ Not in a git repository${NC}"
-            echo "Please run this script from the git repository root"
-            exit 1
-        fi
-        
-        # Check for uncommitted changes
-        if ! git diff-index --quiet HEAD --; then
-            echo -e "${YELLOW}⚠️  Warning: You have uncommitted changes${NC}"
-            echo "Stashing changes before pulling..."
-            git stash push -m "Auto-stash before deployment $(date)"
-        fi
-        
-        # Get current branch
-        CURRENT_BRANCH=$(git branch --show-current)
-        echo "Current branch: $CURRENT_BRANCH"
-        
-        # Pull latest changes
-        echo "Pulling latest changes..."
-        if git pull origin "$CURRENT_BRANCH"; then
-            echo -e "${GREEN}✅ Code updated successfully${NC}"
-        else
-            echo -e "${RED}❌ Failed to pull latest changes${NC}"
-            echo "Please resolve git issues manually"
-            exit 1
-        fi
-        
-        # Force clean build when updating code
-        CLEAN_BUILD=true
-        echo -e "${BLUE}🔄 Forcing clean build after code update${NC}"
-        
-        echo ""
-    fi
-}
+# Save the original directory where deploy.sh is located
+DEPLOY_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-# Function to stop containers
-stop_containers() {
-    echo -e "${YELLOW}🛑 Stopping containers...${NC}"
-    
-    # Try both compose files to ensure we stop everything
-    $DOCKER_COMPOSE_CMD -f docker-compose.yml down 2>/dev/null || true
-    $DOCKER_COMPOSE_CMD -f docker-compose.dev.yml down 2>/dev/null || true
-    
-    echo -e "${GREEN}✅ Containers stopped${NC}"
-}
+if [ "$3" == "--local" ]; then
+  USE_LOCAL=true
+elif [ "$3" == "--branch" ]; then
+  USE_BRANCH=true
+fi
 
-# Function to clean up old images and containers
-cleanup() {
-    echo -e "${YELLOW}🧹 Cleaning up...${NC}"
-    
-    # Remove stopped containers
-    docker container prune -f 2>/dev/null || true
-    
-    # Remove unused images if clean build
-    if [ "$CLEAN_BUILD" = true ]; then
-        echo "Removing unused images..."
-        docker image prune -f 2>/dev/null || true
-        $DOCKER_COMPOSE_CMD -f "$COMPOSE_FILE" build --no-cache
-    fi
-    
-    echo -e "${GREEN}✅ Cleanup complete${NC}"
-}
+echo -e "${GREEN}=== fake-google Deployment ===${NC}"
+echo -e "Version: ${YELLOW}$VERSION_TAG${NC}"
+echo -e "Environment: ${YELLOW}$ENVIRONMENT${NC}"
+echo -e "Port: ${YELLOW}$HOST_PORT${NC}"
+echo ""
 
-# Function to build images
-build_images() {
-    echo -e "${YELLOW}🔨 Building images...${NC}"
-    
-    if [ "$CLEAN_BUILD" = true ]; then
-        $DOCKER_COMPOSE_CMD -f "$COMPOSE_FILE" build --no-cache
-    else
-        $DOCKER_COMPOSE_CMD -f "$COMPOSE_FILE" build
-    fi
-    
-    if [ $? -eq 0 ]; then
-        echo -e "${GREEN}✅ Images built successfully${NC}"
-    else
-        echo -e "${RED}❌ Image build failed${NC}"
-        exit 1
-    fi
-}
+# Stop and remove existing container
+echo -e "${YELLOW}[1/7] Stopping existing container...${NC}"
+if docker ps -a | grep -q "$CONTAINER_NAME"; then
+  docker stop "$CONTAINER_NAME" || true
+  docker rm "$CONTAINER_NAME" || true
+  echo -e "${GREEN}✓ Container stopped and removed${NC}"
+else
+  echo -e "${GREEN}✓ No existing container found${NC}"
+fi
 
-# Function to start containers
-start_containers() {
-    if [ "$BUILD_ONLY" = true ]; then
-        echo -e "${YELLOW}⏭️  Build-only mode, not starting containers${NC}"
-        return
-    fi
-    
-    echo -e "${YELLOW}🚀 Starting containers...${NC}"
-    
-    $DOCKER_COMPOSE_CMD -f "$COMPOSE_FILE" up -d
-    
-    if [ $? -eq 0 ]; then
-        echo -e "${GREEN}✅ Containers started successfully${NC}"
-        echo ""
-        echo -e "${GREEN}🌐 Application: http://localhost:3000${NC}"
-        echo -e "${GREEN}👤 Admin Panel: http://localhost:3000/admin${NC}"
-        echo -e "${GREEN}🗄️  Database: localhost:5432${NC}"
-    else
-        echo -e "${RED}❌ Failed to start containers${NC}"
-        exit 1
-    fi
-}
+# Remove existing image
+echo -e "${YELLOW}[2/7] Removing existing image...${NC}"
+if docker images | grep -q "$IMAGE_NAME"; then
+  docker rmi "$IMAGE_NAME:latest" || true
+  echo -e "${GREEN}✓ Image removed${NC}"
+else
+  echo -e "${GREEN}✓ No existing image found${NC}"
+fi
 
-# Function to show logs
-show_logs() {
-    if [ "$LOGS" = true ] && [ "$BUILD_ONLY" = false ]; then
-        echo -e "${BLUE}📋 Showing logs (Ctrl+C to exit)...${NC}"
-        $DOCKER_COMPOSE_CMD -f "$COMPOSE_FILE" logs -f
-    fi
-}
+# Setup SSH key for GitHub access (if not using local)
+if [ "$USE_LOCAL" = false ]; then
+  # Use SSH key from .env or default
+  SSH_KEY_PATH="${GITHUB_SSH_KEY_PATH:-$DEFAULT_SSH_KEY}"
 
-# Function to show status
-show_status() {
-    echo -e "${BLUE}📊 Container Status:${NC}"
-    $DOCKER_COMPOSE_CMD -f "$COMPOSE_FILE" ps
+  echo -e "${YELLOW}Checking SSH key for GitHub access...${NC}"
+
+  # Check if SSH key exists
+  if [ ! -f "$SSH_KEY_PATH" ]; then
+    echo -e "${RED}ERROR: SSH key not found at $SSH_KEY_PATH${NC}"
+    echo -e "${YELLOW}Please ensure your SSH key exists and is added to GitHub.${NC}"
+    echo -e "${YELLOW}You can specify a custom path in .env: GITHUB_SSH_KEY_PATH=/path/to/key${NC}"
+    exit 1
+  fi
+
+  # Check SSH key permissions
+  KEY_PERMS=$(stat -f "%OLp" "$SSH_KEY_PATH" 2>/dev/null || stat -c "%a" "$SSH_KEY_PATH" 2>/dev/null)
+  if [ "$KEY_PERMS" != "600" ] && [ "$KEY_PERMS" != "400" ]; then
+    echo -e "${YELLOW}WARNING: SSH key has permissions $KEY_PERMS (should be 600 or 400)${NC}"
+    echo -e "${YELLOW}Fixing permissions...${NC}"
+    chmod 600 "$SSH_KEY_PATH"
+  fi
+
+  echo -e "${GREEN}✓ Using SSH key: $SSH_KEY_PATH${NC}"
+
+  # Configure Git to use the SSH key and disable host key checking
+  export GIT_SSH_COMMAND="ssh -i $SSH_KEY_PATH -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
+fi
+
+# Clone or use local directory
+if [ "$USE_LOCAL" = true ]; then
+  echo -e "${YELLOW}[3/7] Using local directory...${NC}"
+  BUILD_DIR="."
+  COMMIT_SHA=$(git rev-parse --short HEAD 2>/dev/null || echo "local")
+else
+  echo -e "${YELLOW}[3/7] Cloning from GitHub...${NC}"
+  BUILD_DIR="/tmp/fake-google-build-$$"
+  rm -rf "$BUILD_DIR"
+  git clone "$GITHUB_REPO" "$BUILD_DIR"
+  cd "$BUILD_DIR"
+
+  if [ "$USE_BRANCH" = true ]; then
+    git checkout "$VERSION_TAG"
+    COMMIT_SHA=$(git rev-parse --short HEAD)
+    echo -e "${GREEN}✓ Repository cloned and checked out to branch: $VERSION_TAG${NC}"
+  else
+    git checkout "$VERSION_TAG"
+    COMMIT_SHA=$(git rev-parse --short HEAD)
+    echo -e "${GREEN}✓ Repository cloned and checked out to tag: $VERSION_TAG${NC}"
+  fi
+fi
+
+# Get env vars early (before build)
+if [ -f "$DEPLOY_DIR/.env" ]; then
+  echo -e "${YELLOW}Loading environment variables from .env...${NC}"
+  export $(grep -v '^#' "$DEPLOY_DIR/.env" | xargs)
+  echo -e "${GREEN}✓ Environment variables loaded${NC}"
+else
+  echo -e "${RED}ERROR: .env file not found at $DEPLOY_DIR/.env${NC}"
+  echo -e "${YELLOW}Please create a .env file in the same directory as deploy.sh${NC}"
+  exit 1
+fi
+
+# Build Docker image
+echo -e "${YELLOW}[4/7] Building Docker image...${NC}"
+
+# Sanitize VERSION_TAG for Docker (replace / with -)
+DOCKER_TAG=$(echo "$VERSION_TAG" | sed 's/\//-/g')
+IMAGE_TAG="$IMAGE_NAME:$DOCKER_TAG-$COMMIT_SHA"
+
+# Prepare build args for NEXT_PUBLIC_ variables (needed at build time)
+BUILD_ARGS=""
+if [ -n "$NEXT_PUBLIC_GA_TRACKING_ID" ]; then
+  BUILD_ARGS="$BUILD_ARGS --build-arg NEXT_PUBLIC_GA_TRACKING_ID=$NEXT_PUBLIC_GA_TRACKING_ID"
+fi
+
+if [ "$USE_LOCAL" = true ]; then
+  docker build $BUILD_ARGS -t "$IMAGE_NAME:latest" -t "$IMAGE_TAG" .
+else
+  docker build $BUILD_ARGS -t "$IMAGE_NAME:latest" -t "$IMAGE_TAG" "$BUILD_DIR"
+fi
+
+echo -e "${GREEN}✓ Docker image built: $IMAGE_TAG${NC}"
+
+# Configure database connection
+echo -e "${YELLOW}[5/7] Configuring database connection...${NC}"
+
+# Determine database connection mode
+if [[ "$DATABASE_URL" == *"@localhost:"* ]] || [[ "$DATABASE_URL" == *"@127.0.0.1:"* ]]; then
+  DATABASE_URL=$(echo "$DATABASE_URL" | sed 's/@localhost:/@host.docker.internal:/' | sed 's/@127.0.0.1:/@host.docker.internal:/')
+  USE_DOCKER_NETWORK=false
+  echo -e "${GREEN}✓ Database URL configured for host machine (via host.docker.internal)${NC}"
+else
+  USE_DOCKER_NETWORK=true
+  echo -e "${YELLOW}[6/7] Checking Docker network...${NC}"
+  if ! docker network inspect "$DOCKER_NETWORK" >/dev/null 2>&1; then
+    echo -e "${RED}ERROR: Docker network '$DOCKER_NETWORK' does not exist${NC}"
+    echo -e "${YELLOW}Please create it first:${NC}"
+    echo -e "  docker network create $DOCKER_NETWORK"
+    exit 1
+  fi
+  echo -e "${GREEN}✓ Docker network exists${NC}"
+fi
+
+if [ -z "$DATABASE_URL" ]; then
+  echo -e "${RED}ERROR: DATABASE_URL must be set in .env${NC}"
+  exit 1
+fi
+
+# Run Docker container
+echo -e "${YELLOW}[7/7] Starting container...${NC}"
+if [ "$USE_DOCKER_NETWORK" = true ]; then
+  # Use Docker network for containerized PostgreSQL
+  docker run -d \
+    --name "$CONTAINER_NAME" \
+    --network "$DOCKER_NETWORK" \
+    -p "$HOST_PORT:$CONTAINER_PORT" \
+    -e NODE_ENV="$ENVIRONMENT" \
+    -e DATABASE_URL="$DATABASE_URL" \
+    -e NEXT_PUBLIC_GA_TRACKING_ID="${NEXT_PUBLIC_GA_TRACKING_ID:-}" \
+    --restart unless-stopped \
+    "$IMAGE_NAME:latest"
+else
+  # Use host.docker.internal for local PostgreSQL / no network needed
+  docker run -d \
+    --name "$CONTAINER_NAME" \
+    --add-host=host.docker.internal:host-gateway \
+    -p "$HOST_PORT:$CONTAINER_PORT" \
+    -e NODE_ENV="$ENVIRONMENT" \
+    -e DATABASE_URL="$DATABASE_URL" \
+    -e NEXT_PUBLIC_GA_TRACKING_ID="${NEXT_PUBLIC_GA_TRACKING_ID:-}" \
+    --restart unless-stopped \
+    "$IMAGE_NAME:latest"
+fi
+
+echo -e "${GREEN}✓ Container started${NC}"
+
+# Wait for application to be ready
+echo -e "${YELLOW}Waiting for application to start...${NC}"
+MAX_ATTEMPTS=10
+ATTEMPT=0
+
+while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+  if curl -sf "http://localhost:$HOST_PORT" > /dev/null 2>&1; then
+    echo -e "${GREEN}✓ Application is running!${NC}"
     echo ""
-    
-    # Check if services are healthy
-    echo -e "${BLUE}🏥 Health Checks:${NC}"
-    
-    # Check database
-    if $DOCKER_COMPOSE_CMD -f "$COMPOSE_FILE" exec -T postgres pg_isready -U postgres -d fakegoogle >/dev/null 2>&1; then
-        echo -e "${GREEN}✅ Database: Healthy${NC}"
-    else
-        echo -e "${RED}❌ Database: Unhealthy${NC}"
-    fi
-    
-    # Check app
-    if curl -f http://localhost:3000 >/dev/null 2>&1; then
-        echo -e "${GREEN}✅ Application: Healthy${NC}"
-    else
-        echo -e "${YELLOW}⏳ Application: Starting up...${NC}"
-    fi
-}
-
-# Function to show environment info
-show_environment() {
-    echo -e "${BLUE}📋 Environment Information:${NC}"
-    echo "   Mode: $([ "$DEVELOPMENT" = true ] && echo "Development" || echo "Production")"
-    echo "   Compose File: $COMPOSE_FILE"
-    echo "   Clean Build: $([ "$CLEAN_BUILD" = true ] && echo "Yes" || echo "No")"
-    echo "   Build Only: $([ "$BUILD_ONLY" = true ] && echo "Yes" || echo "No")"
+    echo -e "${GREEN}=== Deployment Complete ===${NC}"
+    echo -e "Application URL: ${YELLOW}http://localhost:$HOST_PORT${NC}"
+    echo -e "Container Name: ${YELLOW}$CONTAINER_NAME${NC}"
+    echo -e "Image: ${YELLOW}$IMAGE_TAG${NC}"
     echo ""
-    
-    # Check for .env file
-    if [ -f ".env" ]; then
-        echo -e "${GREEN}✅ .env file found${NC}"
-    elif [ -f ".env.local" ]; then
-        echo -e "${GREEN}✅ .env.local file found${NC}"
-    else
-        echo -e "${YELLOW}⚠️  No .env file found (will use defaults)${NC}"
-    fi
-    
-    echo ""
-}
+    echo -e "View logs: ${YELLOW}docker logs -f $CONTAINER_NAME${NC}"
+    echo -e "Stop: ${YELLOW}docker stop $CONTAINER_NAME${NC}"
+    exit 0
+  fi
 
-# Cleanup function for graceful exit
-cleanup_on_exit() {
-    if [ "$LOGS" = true ]; then
-        echo -e "\n${YELLOW}🛑 Stopping log stream...${NC}"
-    fi
-}
+  ATTEMPT=$((ATTEMPT + 1))
+  sleep 2
+done
 
-# Set up cleanup trap
-trap cleanup_on_exit EXIT INT TERM
-
-# Main deployment sequence
-main() {
-    echo -e "${BLUE}🚀 Fake Google Deployment${NC}"
-    echo "========================================"
-    
-    # Check Docker prerequisites first
-    check_docker
-    
-    show_environment
-    
-    # If stop only, just stop and exit
-    if [ "$STOP_ONLY" = true ]; then
-        stop_containers
-        return
-    fi
-    
-    # Update code from git if requested
-    update_code
-    
-    stop_containers
-    cleanup
-    build_images
-    start_containers
-    
-    # Wait a moment for services to start
-    if [ "$BUILD_ONLY" = false ]; then
-        sleep 5
-        show_status
-    fi
-    
-    show_logs
-    
-    echo ""
-    echo -e "${GREEN}🎉 Docker deployment complete!${NC}"
-    echo "========================================"
-    
-    if [ "$BUILD_ONLY" = false ] && [ "$LOGS" = false ]; then
-        echo -e "${BLUE}💡 Use '$DOCKER_COMPOSE_CMD -f $COMPOSE_FILE logs -f' to view logs${NC}"
-        echo -e "${BLUE}💡 Use '$DOCKER_COMPOSE_CMD -f $COMPOSE_FILE down' to stop${NC}"
-    fi
-}
-
-# Run main function
-main
+echo -e "${RED}ERROR: Application failed to start after $MAX_ATTEMPTS attempts${NC}"
+echo -e "${YELLOW}Container logs:${NC}"
+docker logs "$CONTAINER_NAME"
+exit 1

@@ -1,17 +1,53 @@
 # Dependencies
 node_modules
 npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
-# Next.js
-.next/
-out/
+# Build outputs
+.next
+out
+dist
+build
 
 # Environment files
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env*.local
+.env.development
+.env.staging
+
+# Version control
+.git
+.gitignore
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+.vscode
+.idea
+*.swp
+*.swo
+
+# Deployment files
+.netlify
+netlify
+Dockerfile
+docker-compose.yml
+deploy*.sh
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Test files
+coverage/
+.nyc_output
+**/*.test.js
+**/*.test.ts
+**/*.spec.js
+**/*.spec.ts
 
 # Logs
 logs
@@ -21,67 +57,7 @@ logs
 pids
 *.pid
 *.seed
-*.pid.lock
 
-# Coverage directory used by tools like istanbul
-coverage/
-
-# Dependency directories
-node_modules/
-
-# Optional npm cache directory
-.npm
-
-# Optional REPL history
-.node_repl_history
-
-# Output of 'npm pack'
-*.tgz
-
-# Yarn Integrity file
-.yarn-integrity
-
-# dotenv environment variables file
-.env
-.env.test
-
-# parcel-bundler cache (https://parceljs.org/)
+# Misc
+.vercel
 .cache
-.parcel-cache
-
-# IDE files
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# OS generated files
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-
-# Git
-.git
-.gitignore
-README.md
-DEPLOYMENT.md
-
-# Docker files
-Dockerfile*
-docker-compose*.yml
-.dockerignore
-
-# Scripts
-*.sh
-
-# Database files
-*.sql
-
-# Temporary files
-tmp/
-temp/
