@@ -1,9 +1,10 @@
 import Link from "next/link"
-import { ChangeEvent, FormEvent, useState, useEffect } from "react"
+import { FormEvent, useState, useEffect } from "react"
 import PaidAds from "./PaidAds"
 import OrganicResults from "./OrganicResults"
 import UTMTracker from "./UTMTracker"
 import { gtag } from "./GoogleAnalytics"
+import SearchSuggest from "./SearchSuggest"
 
 type PaidAd = {
   title: string
@@ -24,17 +25,19 @@ interface SearchResultsPageProps {
   query: string
   setQuery: (query: string) => void
   onSearch: (e: FormEvent<HTMLFormElement>) => void
+  onSuggestionSearch: (query: string) => void
   onLogoClick: () => void
   ads: PaidAd[]
   organicResults: OrganicResult[]
   loading: boolean
-  search?: string // Add search state to know if a search has been performed
+  search?: string
 }
 
 export default function SearchResultsPage({
   query,
   setQuery,
   onSearch,
+  onSuggestionSearch,
   onLogoClick,
   ads,
   organicResults,
@@ -106,23 +109,13 @@ export default function SearchResultsPage({
 
             {/* Search box */}
             <form onSubmit={onSearch} className="flex-1 max-w-full md:max-w-2xl">
-              <div className="relative">
-                <input
-                  value={query}
-                  onChange={(e: ChangeEvent<HTMLInputElement>) => setQuery(e.target.value)}
-                  className="w-full px-3 py-2 md:px-4 md:py-2 text-sm md:text-base border border-gray-300 rounded-full shadow-sm hover:shadow-md focus:shadow-md focus:outline-none focus:border-transparent focus:ring-1 focus:ring-blue-500 google-font"
-                  autoFocus
-                />
-                <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center gap-3">
-                  <svg className="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                    <path
-                      fillRule="evenodd"
-                      d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                </div>
-              </div>
+              <SearchSuggest
+                query={query}
+                onChange={setQuery}
+                onSearch={onSuggestionSearch}
+                compact
+                autoFocus
+              />
             </form>
 
             {/* Right side - currently empty */}
@@ -132,56 +125,28 @@ export default function SearchResultsPage({
 
         {/* Navigation tabs */}
         <div className="hidden md:block px-3 md:px-6">
-          <div className="flex gap-4 md:gap-8 text-sm google-font overflow-x-auto scrollbar-hide md:ml-[180px]">
-            <button className="text-blue-600 border-b-2 border-blue-600 pb-2 md:pb-3 px-2 md:px-1 flex items-center gap-1 google-font whitespace-nowrap">
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                <path
-                  fillRule="evenodd"
-                  d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z"
-                  clipRule="evenodd"
-                />
-              </svg>
-              All
-            </button>
-            <button className="text-gray-700 hover:text-gray-900 pb-2 md:pb-3 px-2 md:px-1 flex items-center gap-1 google-font whitespace-nowrap">
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                <path
-                  fillRule="evenodd"
-                  d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z"
-                  clipRule="evenodd"
-                />
-              </svg>
-              Images
-            </button>
-            <button className="text-gray-700 hover:text-gray-900 pb-2 md:pb-3 px-2 md:px-1 flex items-center gap-1 google-font whitespace-nowrap">
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z" />
-              </svg>
-              Videos
-            </button>
-            <button className="text-gray-700 hover:text-gray-900 pb-2 md:pb-3 px-2 md:px-1 flex items-center gap-1 google-font whitespace-nowrap">
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                <path
-                  fillRule="evenodd"
-                  d="M2 5a2 2 0 012-2h8a2 2 0 012 2v10a2 2 0 002 2H4a2 2 0 01-2-2V5zm3 1h6v4H5V6zm6 6H5v2h6v-2z"
-                  clipRule="evenodd"
-                />
-                <path d="M15 7h1a2 2 0 012 2v5.5a1.5 1.5 0 01-3 0V7z" />
-              </svg>
-              News
-            </button>
-            <button className="text-gray-700 hover:text-gray-900 pb-2 md:pb-3 px-2 md:px-1 flex items-center gap-1 google-font whitespace-nowrap">
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" />
-              </svg>
-              Shopping
-            </button>
-            <button className="text-gray-700 hover:text-gray-900 pb-2 md:pb-3 px-2 md:px-1 flex items-center gap-1 google-font whitespace-nowrap">
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
-              </svg>
-              More
-            </button>
+          <div className="flex gap-0 text-sm google-font overflow-x-auto scrollbar-hide md:ml-[172px]">
+            {[
+              { label: "AI Mode" },
+              { label: "All", active: true },
+              { label: "Shopping" },
+              { label: "Short videos" },
+              { label: "Images" },
+              { label: "Forums" },
+              { label: "Videos" },
+              { label: "More ▾" },
+              { label: "Tools ▾" },
+            ].map(({ label, active }) => (
+              <button
+                key={label}
+                className={`px-3 pb-2 pt-1 whitespace-nowrap google-font border-b-2 transition-colors ${
+                  active
+                    ? "text-[#202124] font-medium border-[#1a73e8]"
+                    : "text-[#70757a] border-transparent hover:text-[#202124] hover:border-gray-300"
+                }`}>
+                {label}
+              </button>
+            ))}
           </div>
         </div>
       </header>
