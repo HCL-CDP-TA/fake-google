@@ -89,9 +89,11 @@ export default function Admin() {
   useEffect(() => {
     setIsLoadingAds(true)
     fetch("/api/ads")
-      .then(r => r.json())
+      .then(r => {
+        if (!r.ok) throw new Error(`API error: ${r.status}`)
+        return r.json()
+      })
       .then(data => {
-        // API returns array directly, not wrapped in {ads: [...]}
         setAds(Array.isArray(data) ? data : data.ads || [])
       })
       .catch(console.error)
