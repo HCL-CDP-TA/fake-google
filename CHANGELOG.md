@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.5.0](https://github.com/HCL-CDP-TA/fake-google/compare/v1.4.0...v1.5.0) (2026-03-25)
+
+
+### Features
+
+* add search suggest autocomplete ([e38a436](https://github.com/HCL-CDP-TA/fake-google/commit/e38a43699cc1ab3609c8190397df9e3caf6bc66a))
+* **deploy:** update deploy procedure to match other apps ([2450063](https://github.com/HCL-CDP-TA/fake-google/commit/245006353e816185a7210c02b0ff0fb4b0563a08))
+
+
+### Bug Fixes
+
+* fail gracefully when no ads ([d77136d](https://github.com/HCL-CDP-TA/fake-google/commit/d77136d6ad74076819814327833ace8ceed2ac04))
+
 ## [1.4.0](https://github.com/HCL-CDP-TA/fake-google/compare/v1.3.7...v1.4.0) (2026-03-25)
 
 
