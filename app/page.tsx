@@ -6,7 +6,7 @@ import { useEffect } from "react"
 import { gtag } from "./components/GoogleAnalytics"
 
 export default function Home() {
-  const { query, setQuery, search, ads, organic, loading, handleSearch, goHome } = useSearch()
+  const { query, setQuery, search, ads, organic, loading, handleSearch, searchQuery, goHome } = useSearch()
 
   useEffect(() => {
     if (search) {
@@ -31,6 +31,7 @@ export default function Home() {
       query={query}
       setQuery={setQuery}
       onSearch={handleSearch}
+      onSuggestionSearch={searchQuery}
       onLogoClick={goHome}
       ads={ads}
       organicResults={organic}

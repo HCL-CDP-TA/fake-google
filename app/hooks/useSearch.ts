@@ -126,6 +126,13 @@ export function useSearch() {
     performSearch(query)
   }
 
+  function searchQuery(q: string) {
+    if (!q.trim()) return
+    setQuery(q)
+    updateURL(q)
+    performSearch(q)
+  }
+
   // Function to trigger search when localization changes
   function refreshResults() {
     if (search) {
@@ -153,6 +160,7 @@ export function useSearch() {
     organic,
     loading,
     handleSearch,
+    searchQuery,
     goHome,
     // Localization
     country,
