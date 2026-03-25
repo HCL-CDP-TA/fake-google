@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.0](https://github.com/HCL-CDP-TA/fake-google/compare/v1.3.7...v1.4.0) (2026-03-18)
+
+
+### Features
+
+* remove 'fake' moniker ([6502ce7](https://github.com/HCL-CDP-TA/fake-google/commit/6502ce73a348d21ca58b52689ea52d798b230a8e))
+
 ## [1.3.7](https://github.com/HCL-CDP-TA/fake-google/compare/v1.3.6...v1.3.7) (2025-12-04)
 
 
